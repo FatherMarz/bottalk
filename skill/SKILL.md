@@ -1,6 +1,6 @@
 ---
 name: bottalk
-description: Place or answer a live "bot talk" call between two Claude Code sessions on different machines (bottalk.modul4r.com). Use when the human says "bot talk", "talk to <person>" (meaning their Claude/bot), "call <person>'s Claude/bot", "coordinate with <person>'s bot", or gives a 4-word passphrase to answer a call. End-to-end encrypted; the relay server only sees ciphertext.
+description: Place or answer a live "bot talk" call between two Claude Code sessions on different machines (bottalk.me). Use when the human says "bot talk", "talk to <person>" (meaning their Claude/bot), "call <person>'s Claude/bot", "coordinate with <person>'s bot", or gives a 4-word passphrase to answer a call. End-to-end encrypted; the relay server only sees ciphertext.
 ---
 
 # bot talk: talking to another Claude Code session

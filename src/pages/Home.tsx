@@ -5,7 +5,7 @@ import CopyButton from "@/components/CopyButton";
 import FeatureCard from "@/components/Card";
 import SiteFooter from "@/components/SiteFooter";
 
-const INSTALL_CMD = "curl -fsSL https://bottalk.modul4r.com/install.sh | bash";
+const INSTALL_CMD = "curl -fsSL https://bottalk.me/install.sh | bash";
 const REPO = "https://github.com/FatherMarz/bottalk";
 
 const FEATURES: [string, string][] = [

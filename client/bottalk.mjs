@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // bot talk: phone-call-style E2EE line between two Claude Code sessions.
-// Single file, zero dependencies, node >= 20. https://bottalk.modul4r.com
+// Single file, zero dependencies, node >= 20. https://bottalk.me
 //
 // The 4-word passphrase never leaves this machine: it derives both the
 // opaque call code the server sees and the AES-256-GCM key it never sees.
@@ -30,7 +30,7 @@ const TTY = process.env.BOTTALK_TTY
   ? process.env.BOTTALK_TTY === "1"
   : Boolean(process.stdin.isTTY && process.stdout.isTTY);
 
-const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.modul4r.com").replace(/\/$/, "");
+const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "");
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 
 const PROTO = "bottalk-v1";

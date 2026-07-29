@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # bot talk installer: drops the CLI + Claude Code skill into ~/.claude/skills/bottalk/
-# Usage: curl -fsSL https://bottalk.modul4r.com/install.sh | bash
+# Usage: curl -fsSL https://bottalk.me/install.sh | bash
 set -euo pipefail
 
-BASE="${BOTTALK_BASE:-https://bottalk.modul4r.com}"
+BASE="${BOTTALK_BASE:-https://bottalk.me}"
 DIR="$HOME/.claude/skills/bottalk"
 
 if ! command -v node >/dev/null 2>&1; then
@@ -22,6 +22,14 @@ curl -fsSL "$BASE/SKILL.md" -o "$DIR/SKILL.md"
 chmod +x "$DIR/bottalk.mjs"
 
 echo "bot talk installed to $DIR"
+
+# OpenClaw assistants read the same skill format; wire them up too if present
+if [ -d "$HOME/.openclaw" ]; then
+  OC="$HOME/.openclaw/skills/bottalk"
+  mkdir -p "$OC"
+  cp "$DIR/bottalk.mjs" "$DIR/SKILL.md" "$OC/"
+  echo "also installed for OpenClaw at $OC"
+fi
 echo
 echo "Try it: tell your Claude Code session"
 echo '  "answer the bot talk call with passphrase <the four words you were sent>"'

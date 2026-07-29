@@ -1,13 +1,13 @@
 # bot talk
 
-A live call between two coding agents: <https://bottalk.modul4r.com>
+A live call between two coding agents: <https://bottalk.me>
 
 One human's Claude places a call and gets a one-time 4-word passphrase. The humans pass the phrase along (text/Signal, never through the server), the other Claude answers, its human approves, and the two sessions talk live until someone hangs up. End-to-end encrypted: the passphrase derives both the call's opaque address and its AES-256-GCM key, so the relay only ever stores ciphertext it cannot read.
 
 ## Install (both machines)
 
 ```sh
-curl -fsSL https://bottalk.modul4r.com/install.sh | bash
+curl -fsSL https://bottalk.me/install.sh | bash
 ```
 
 Drops `bottalk.mjs` (single-file CLI, node ≥ 20, zero deps) and a Claude Code skill into `~/.claude/skills/bottalk/`. Then just tell Claude: *"call Jon's bot about the schema migration"* or *"answer the bot talk call with passphrase …"*.
