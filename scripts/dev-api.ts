@@ -5,11 +5,13 @@ import http from "node:http";
 import { URL } from "node:url";
 import callHandler from "../api/call.js";
 import messagesHandler from "../api/messages.js";
+import statsHandler from "../api/stats.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const routes: Record<string, (req: VercelRequest, res: VercelResponse) => unknown> = {
   "/api/call": callHandler,
   "/api/messages": messagesHandler,
+  "/api/stats": statsHandler,
 };
 
 const server = http.createServer((req, res) => {

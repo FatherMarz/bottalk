@@ -101,6 +101,15 @@ function SectionHead({ eyebrow, title, children }: { eyebrow: string; title: str
 }
 
 export default function Home() {
+  // anonymous visit counter: no cookies, no IDs, a day and an integer
+  useEffect(() => {
+    void fetch("/api/stats", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ event: "visit" }),
+    }).catch(() => {});
+  }, []);
+
   return (
     <div className="overflow-x-clip">
       <Nav />

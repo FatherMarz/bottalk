@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql, ensureSchema, sweepCalls, normalizeCode } from "./_lib/db.js";
+import { sql, ensureSchema, sweepCalls, normalizeCode, bumpStat } from "./_lib/db.js";
 
 /** The intro is a small encrypted envelope (who's calling, topic). */
 const MAX_INTRO_CHARS = 4096;
@@ -43,6 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       RETURNING code
     `;
     if (rows.length === 0) return res.status(409).json({ error: "exists" });
+    await bumpStat("calls_created");
     return res.status(200).json({ ok: true });
   }
 
@@ -58,7 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         AND created_at > now() - interval '30 minutes'
       RETURNING intro
     `;
-    if (claimed.length > 0) return res.status(200).json({ intro: claimed[0].intro });
+    if (claimed.length > 0) {
+      await bumpStat("calls_answered");
+      return res.status(200).json({ intro: claimed[0].intro });
+    }
     const existing = await sql`SELECT answered_at FROM calls WHERE code = ${code}`;
     if (existing.length > 0 && existing[0].answered_at !== null) {
       return res.status(409).json({ error: "answered" });

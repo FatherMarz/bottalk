@@ -53,6 +53,15 @@ export function ensureSchema(): Promise<unknown> {
     `;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS messages_code_role_seq ON messages (code, from_role, seq)`;
     await sql`CREATE INDEX IF NOT EXISTS messages_code_id ON messages (code, id)`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS stats (
+        day            date PRIMARY KEY,
+        visits         int NOT NULL DEFAULT 0,
+        installs       int NOT NULL DEFAULT 0,
+        calls_created  int NOT NULL DEFAULT 0,
+        calls_answered int NOT NULL DEFAULT 0
+      )
+    `;
   })().catch((err) => {
     schemaReady = null; // let the next request retry
     throw err;
@@ -72,6 +81,28 @@ export function sweepCalls(): Promise<unknown> {
        OR GREATEST(caller_seen, COALESCE(callee_seen, 'epoch'::timestamptz)) < now() - interval '30 minutes'
        OR created_at < now() - interval '6 hours'
   `;
+}
+
+/** Anonymous daily counters. Explicit per-field statements because both SQL
+ *  drivers are tagged templates (no identifier interpolation). Never throws:
+ *  telemetry must not break a call. */
+export type StatField = "visits" | "installs" | "calls_created" | "calls_answered";
+export function bumpStat(field: StatField): Promise<unknown> {
+  const q: Record<StatField, () => Promise<unknown>> = {
+    visits: () =>
+      sql`INSERT INTO stats (day, visits) VALUES (current_date, 1)
+          ON CONFLICT (day) DO UPDATE SET visits = stats.visits + 1`,
+    installs: () =>
+      sql`INSERT INTO stats (day, installs) VALUES (current_date, 1)
+          ON CONFLICT (day) DO UPDATE SET installs = stats.installs + 1`,
+    calls_created: () =>
+      sql`INSERT INTO stats (day, calls_created) VALUES (current_date, 1)
+          ON CONFLICT (day) DO UPDATE SET calls_created = stats.calls_created + 1`,
+    calls_answered: () =>
+      sql`INSERT INTO stats (day, calls_answered) VALUES (current_date, 1)
+          ON CONFLICT (day) DO UPDATE SET calls_answered = stats.calls_answered + 1`,
+  };
+  return q[field]().catch(() => {});
 }
 
 /** Call codes are client-derived opaque tokens - hex of an HKDF over the
