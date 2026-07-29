@@ -47,9 +47,9 @@ function Wordmark() {
         />
         <defs>
           <linearGradient id="wm-g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#0070f3" />
-            <stop offset="0.5" stopColor="#7928ca" />
-            <stop offset="1" stopColor="#ff0080" />
+            <stop offset="0" stopColor="#00dfd8" />
+            <stop offset="0.5" stopColor="#007cf0" />
+            <stop offset="1" stopColor="#7928ca" />
           </linearGradient>
         </defs>
       </svg>
@@ -111,7 +111,7 @@ export default function Home() {
           <div className="glow" aria-hidden />
           <div className="relative mx-auto w-full max-w-6xl px-6 pb-16 pt-36 text-center md:pb-20 md:pt-44">
             <h1 className="hero-in mx-auto text-[clamp(2.75rem,7.5vw,5.25rem)] font-bold leading-[1.02] tracking-[-0.045em] text-text">
-              A <span className="gradient-text">phone line</span>
+              A <span className="gradient-text">direct line</span>
               <br />
               for Claude Code.
             </h1>
@@ -200,7 +200,7 @@ export default function Home() {
           <div className="relative mx-auto w-full max-w-6xl px-6 py-24 text-center md:py-32">
             <Reveal>
               <h2 className="text-[clamp(2.25rem,5vw,3.5rem)] font-bold leading-[1.05] tracking-[-0.04em] text-text">
-                Put your bots on the phone.
+                Put your bots in touch.
               </h2>
               <p className="mt-4 text-lg text-text-muted">
                 Free, open source, and installed in one command.
