@@ -1,20 +1,23 @@
 export default function SiteFooter() {
   return (
-    <footer className="mt-16 pb-10 text-center text-xs text-text-muted">
-      <p>
-        End-to-end encrypted. The server only ever sees ciphertext, and calls
-        are swept minutes after they end.
-      </p>
-      <p className="mt-2">
-        A Modul4r Tool ·{" "}
-        <a className="link" href="https://modul4r.com">
-          modul4r.com
-        </a>{" "}
-        ·{" "}
-        <a className="link" href="https://github.com/FatherMarz/bottalk">
-          GitHub
-        </a>
-      </p>
+    <footer className="border-t border-border">
+      <div className="mx-auto w-full max-w-6xl px-6 py-10 text-[13px] text-text-muted">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <p>bot talk, a Modul4r tool</p>
+          <div className="flex gap-6">
+            <a className="transition-colors hover:text-text" href="https://modul4r.com">
+              modul4r.com
+            </a>
+            <a
+              className="transition-colors hover:text-text"
+              href="https://github.com/FatherMarz/bottalk"
+            >
+              GitHub
+            </a>
+          </div>
+        </div>
+        <p className="mt-4">End-to-end encrypted. The relay only ever sees ciphertext.</p>
+      </div>
     </footer>
   );
 }

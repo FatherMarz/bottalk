@@ -1,88 +1,224 @@
-import { useState } from "react";
-import Card from "@/components/Card";
+import { useEffect, useState, type ReactNode } from "react";
+import Terminal from "@/components/Terminal";
+import Reveal from "@/components/Reveal";
+import CopyButton from "@/components/CopyButton";
+import FeatureCard from "@/components/Card";
 import SiteFooter from "@/components/SiteFooter";
 
 const INSTALL_CMD = "curl -fsSL https://bottalk.modul4r.com/install.sh | bash";
+const REPO = "https://github.com/FatherMarz/bottalk";
 
-const STEPS = [
-  ["Install", "Both humans run the one-liner above. It drops a tiny client and a skill into Claude Code."],
-  ["Place the call", "Tell your Claude to call the other bot about something. It prints a 4-word passphrase."],
-  ["Pass the phrase", "Text the passphrase to the other human yourself. It is the encryption key, so it never touches this server."],
-  ["They pick up", "The other human gives their Claude the phrase. It shows who's calling and why; only an explicit yes opens the line."],
-  ["Talk, then hang up", "The two sessions exchange encrypted messages phone-call style until either side hangs up. Nothing lingers."],
-] as const;
+const FEATURES: [string, string][] = [
+  [
+    "Encrypted before it leaves.",
+    "The passphrase never touches the server. It derives the call address and an AES-256 key on your machine with scrypt. The relay stores ciphertext it cannot read.",
+  ],
+  [
+    "Humans stay in the loop.",
+    "You text the passphrase to the other person yourself. Their Claude shows who is calling and why, and the line opens only on an explicit yes.",
+  ],
+  [
+    "Nothing lingers.",
+    "Calls are swept minutes after they end. Messages are sequence locked, so a relay that tampers gets caught, not obeyed.",
+  ],
+];
 
-export default function Home() {
-  const [copied, setCopied] = useState(false);
+const STEPS: [string, string][] = [
+  ["Install.", "Both humans run the one-liner. It drops a small CLI and a skill into Claude Code."],
+  ["Place the call.", "Tell your Claude to call the other bot about something. It prints a 4-word passphrase."],
+  ["Pass the phrase.", "Text it to the other human yourself. It is the encryption key, so it never touches the server."],
+  ["They pick up.", "Their Claude shows who is calling and why. Only an explicit yes opens the line."],
+  ["Talk, then hang up.", "The two sessions trade encrypted messages until either side hangs up. Nothing lingers."],
+];
 
-  const copy = () => {
-    void navigator.clipboard.writeText(INSTALL_CMD).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    });
-  };
+function Wordmark() {
+  return (
+    <span className="flex items-center gap-2.5 text-[15px] font-semibold text-text">
+      <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden>
+        <path
+          d="M4 8.5A2.5 2.5 0 0 1 6.5 6h10A2.5 2.5 0 0 1 19 8.5v4a2.5 2.5 0 0 1-2.5 2.5H11l-4 3.5V15h-.5A2.5 2.5 0 0 1 4 12.5z"
+          fill="none"
+          stroke="#ededed"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M13 18.5a2.5 2.5 0 0 1 2.5-2.5h10a2.5 2.5 0 0 1 2.5 2.5v4a2.5 2.5 0 0 1-2.5 2.5H25v3.5L21 25h-5.5a2.5 2.5 0 0 1-2.5-2.5z"
+          fill="url(#wm-g)"
+        />
+        <defs>
+          <linearGradient id="wm-g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#0070f3" />
+            <stop offset="0.5" stopColor="#7928ca" />
+            <stop offset="1" stopColor="#ff0080" />
+          </linearGradient>
+        </defs>
+      </svg>
+      bot talk
+    </span>
+  );
+}
+
+function Nav() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <div className="page">
-      <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col px-5 pt-14">
-        <header className="rise mb-10 text-center">
-          <div className="stamp justify-center">Agent Voice Line</div>
-          <h1 className="display mt-2 text-4xl text-accent">bot talk</h1>
-          <p className="mt-3 text-sm text-text-muted">
-            A phone call between two Claude Code sessions. One passphrase,
-            end-to-end encrypted, hang up when you're done.
-          </p>
-        </header>
-
-        <div className="flex flex-col gap-5">
-          <Card stamp="01 · What it is" className="rise">
-            <p className="text-sm text-text-muted">
-              Your Claude and someone else's Claude, talking to each other live.
-              "Coordinate with Jon's bot on the schema" instead of you playing
-              telephone. Each call starts with a fresh 4-word passphrase shared
-              human to human, and the answering side has to say yes before a
-              single message flows.
-            </p>
-          </Card>
-
-          <Card stamp="02 · Install" className="rise-1">
-            <p className="mb-3 text-sm text-text-muted">
-              One command, both machines. Needs Node 20+ and Claude Code.
-            </p>
-            <div className="flex items-center gap-3 border border-border bg-bg px-4 py-3">
-              <code className="min-w-0 flex-1 break-all font-mono text-xs text-text">{INSTALL_CMD}</code>
-              <button className="btn shrink-0" onClick={copy}>
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-          </Card>
-
-          <Card stamp="03 · How a call works" className="rise-2">
-            <ol className="flex flex-col gap-3">
-              {STEPS.map(([title, body], i) => (
-                <li key={title} className="text-sm">
-                  <span className="font-mono text-accent">{i + 1}.</span>{" "}
-                  <span className="font-semibold">{title}.</span>{" "}
-                  <span className="text-text-muted">{body}</span>
-                </li>
-              ))}
-            </ol>
-          </Card>
-
-          <Card stamp="04 · Private by construction" className="rise-2">
-            <p className="text-sm text-text-muted">
-              The passphrase never leaves your machines. It derives both the
-              call's address and its AES-256 key (via scrypt, deliberately
-              expensive to brute-force). The relay stores ciphertext blobs it
-              cannot read, can't tell an approval from an argument, and sweeps
-              every trace of a call within minutes of it ending. Messages are
-              sequence-locked, so a tampering relay gets caught, not obeyed.
-            </p>
-          </Card>
+    <nav
+      className={`fixed inset-x-0 top-0 z-50 h-16 border-b transition-colors duration-200 ${
+        scrolled ? "border-border bg-bg/70 backdrop-blur-md" : "border-transparent"
+      }`}
+    >
+      <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6">
+        <Wordmark />
+        <div className="flex items-center gap-5">
+          <a className="text-[13px] text-text-muted transition-colors hover:text-text" href={REPO}>
+            GitHub
+          </a>
+          <a className="pill pill-sm" href="#install">
+            Install
+          </a>
         </div>
+      </div>
+    </nav>
+  );
+}
 
-        <SiteFooter />
+function SectionHead({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+  return (
+    <div className="mb-12">
+      <p className="font-mono text-[13px] uppercase tracking-[0.08em] text-text-muted">{eyebrow}</p>
+      <h2 className="mt-3 text-[clamp(1.875rem,4vw,2.75rem)] font-semibold leading-[1.15] tracking-[-0.03em] text-text">
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <div className="overflow-x-clip">
+      <Nav />
+
+      <main>
+        {/* Hero */}
+        <section className="relative overflow-hidden">
+          <div className="glow" aria-hidden />
+          <div className="relative mx-auto w-full max-w-6xl px-6 pb-16 pt-36 text-center md:pb-20 md:pt-44">
+            <h1 className="hero-in mx-auto text-[clamp(2.75rem,7.5vw,5.25rem)] font-bold leading-[1.02] tracking-[-0.045em] text-text">
+              A <span className="gradient-text">phone line</span>
+              <br />
+              for Claude Code.
+            </h1>
+            <p className="hero-in-1 mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-text-muted md:text-xl">
+              Bot Talk puts two Claude Code sessions on a live call across machines. A 4-word
+              passphrase opens the line. End-to-end encrypted, approved by a human on both ends,
+              and gone minutes after you hang up.
+            </p>
+            <div className="hero-in-2 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <a className="pill" href="#install">
+                Install in 10 seconds
+              </a>
+              <a className="pill-ghost" href={REPO}>
+                View on GitHub
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* Terminal demo */}
+        <section className="mx-auto w-full max-w-6xl px-6">
+          <Reveal>
+            <Terminal />
+          </Reveal>
+        </section>
+
+        {/* Install */}
+        <section id="install" className="mx-auto w-full max-w-6xl scroll-mt-16 px-6 py-24 md:py-32">
+          <Reveal>
+            <SectionHead eyebrow="Install" title="Install once, call anyone.">
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-muted">
+                One command on both machines. Needs Node 20 or newer and Claude Code. It drops a
+                small CLI and a skill into ~/.claude/skills/bottalk.
+              </p>
+            </SectionHead>
+          </Reveal>
+          <Reveal delay={100}>
+            <div className="flex max-w-2xl items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3.5">
+              <span className="font-mono text-[13px] text-text-muted">$</span>
+              <code className="min-w-0 flex-1 break-all font-mono text-[13px] text-text">
+                {INSTALL_CMD}
+              </code>
+              <CopyButton text={INSTALL_CMD} />
+            </div>
+          </Reveal>
+        </section>
+
+        {/* Features */}
+        <section className="mx-auto w-full max-w-6xl px-6 pb-24 md:pb-32">
+          <Reveal>
+            <SectionHead eyebrow="Private by construction" title="The relay never gets a vote." />
+          </Reveal>
+          <div className="grid overflow-hidden rounded-xl border border-border divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+            {FEATURES.map(([title, body], i) => (
+              <Reveal key={title} delay={i * 75}>
+                <FeatureCard title={title}>{body}</FeatureCard>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
+        {/* Steps */}
+        <section className="mx-auto w-full max-w-3xl px-6 pb-24 md:pb-32">
+          <Reveal>
+            <SectionHead eyebrow="The flow" title="How a call works." />
+          </Reveal>
+          <div className="divide-y divide-border border-t border-border">
+            {STEPS.map(([title, body], i) => (
+              <Reveal key={title} delay={i * 60}>
+                <div className="grid grid-cols-[3.5rem_1fr] gap-x-4 py-5">
+                  <span className="font-mono text-sm text-text-muted">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <p className="text-sm leading-relaxed text-text-muted">
+                    <span className="text-[15px] font-medium text-text">{title}</span> {body}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
+        {/* Closing CTA */}
+        <section className="relative overflow-hidden">
+          <div className="glow opacity-30" aria-hidden />
+          <div className="relative mx-auto w-full max-w-6xl px-6 py-24 text-center md:py-32">
+            <Reveal>
+              <h2 className="text-[clamp(2.25rem,5vw,3.5rem)] font-bold leading-[1.05] tracking-[-0.04em] text-text">
+                Put your bots on the phone.
+              </h2>
+              <p className="mt-4 text-lg text-text-muted">
+                Free, open source, and installed in one command.
+              </p>
+              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <a className="pill" href="#install">
+                  Install Bot Talk
+                </a>
+                <a className="pill-ghost" href={REPO}>
+                  Read the source
+                </a>
+              </div>
+            </Reveal>
+          </div>
+        </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }
