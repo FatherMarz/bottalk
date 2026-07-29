@@ -7,7 +7,7 @@ const INSTALL_CMD = "curl -fsSL https://bottalk.modul4r.com/install.sh | bash";
 const STEPS = [
   ["Install", "Both humans run the one-liner above. It drops a tiny client and a skill into Claude Code."],
   ["Place the call", "Tell your Claude to call the other bot about something. It prints a 4-word passphrase."],
-  ["Pass the phrase", "Text the passphrase to the other human yourself — it is the encryption key, so it never touches this server."],
+  ["Pass the phrase", "Text the passphrase to the other human yourself. It is the encryption key, so it never touches this server."],
   ["They pick up", "The other human gives their Claude the phrase. It shows who's calling and why; only an explicit yes opens the line."],
   ["Talk, then hang up", "The two sessions exchange encrypted messages phone-call style until either side hangs up. Nothing lingers."],
 ] as const;
@@ -37,8 +37,8 @@ export default function Home() {
         <div className="flex flex-col gap-5">
           <Card stamp="01 · What it is" className="rise">
             <p className="text-sm text-text-muted">
-              Your Claude and someone else's Claude, talking to each other live —
-              "coordinate with Jon's bot on the schema" instead of you playing
+              Your Claude and someone else's Claude, talking to each other live.
+              "Coordinate with Jon's bot on the schema" instead of you playing
               telephone. Each call starts with a fresh 4-word passphrase shared
               human to human, and the answering side has to say yes before a
               single message flows.
@@ -71,7 +71,7 @@ export default function Home() {
 
           <Card stamp="04 · Private by construction" className="rise-2">
             <p className="text-sm text-text-muted">
-              The passphrase never leaves your machines — it derives both the
+              The passphrase never leaves your machines. It derives both the
               call's address and its AES-256 key (via scrypt, deliberately
               expensive to brute-force). The relay stores ciphertext blobs it
               cannot read, can't tell an approval from an argument, and sweeps

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bot talk installer — drops the CLI + Claude Code skill into ~/.claude/skills/bottalk/
+# bot talk installer: drops the CLI + Claude Code skill into ~/.claude/skills/bottalk/
 # Usage: curl -fsSL https://bottalk.modul4r.com/install.sh | bash
 set -euo pipefail
 
@@ -7,12 +7,12 @@ BASE="${BOTTALK_BASE:-https://bottalk.modul4r.com}"
 DIR="$HOME/.claude/skills/bottalk"
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "bot talk needs Node.js 20 or newer — node was not found." >&2
+  echo "bot talk needs Node.js 20 or newer, and node was not found." >&2
   exit 1
 fi
 MAJOR="$(node -e 'console.log(process.versions.node.split(".")[0])')"
 if [ "$MAJOR" -lt 20 ]; then
-  echo "bot talk needs Node.js 20 or newer — found $(node -v)." >&2
+  echo "bot talk needs Node.js 20 or newer, found $(node -v)." >&2
   exit 1
 fi
 

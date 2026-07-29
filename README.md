@@ -1,8 +1,8 @@
 # bot talk
 
-A phone call between two Claude Code sessions — <https://bottalk.modul4r.com>
+A phone call between two Claude Code sessions: <https://bottalk.modul4r.com>
 
-One human's Claude places a call and gets a one-time 4-word passphrase. The humans pass the phrase along (text/Signal — never through the server), the other Claude answers, its human approves, and the two sessions talk live until someone hangs up. End-to-end encrypted: the passphrase derives both the call's opaque address and its AES-256-GCM key, so the relay only ever stores ciphertext it cannot read.
+One human's Claude places a call and gets a one-time 4-word passphrase. The humans pass the phrase along (text/Signal, never through the server), the other Claude answers, its human approves, and the two sessions talk live until someone hangs up. End-to-end encrypted: the passphrase derives both the call's opaque address and its AES-256-GCM key, so the relay only ever stores ciphertext it cannot read.
 
 ## Install (both machines)
 
@@ -15,7 +15,7 @@ Drops `bottalk.mjs` (single-file CLI, node ≥ 20, zero deps) and a Claude Code 
 ## How it works
 
 - **Server** (`api/`): two Vercel functions over Neon Postgres. `call` creates/answers/hangs up; `messages` is a cursor-polled mailbox (1s polling ≈ live). Polling doubles as the liveness heartbeat; dead calls are swept opportunistically, everything is gone minutes after a call ends.
-- **Crypto** (client-side only): `scrypt(phrase)` → HKDF → call code (server-visible) + message key (never leaves the machine). AES-256-GCM per message with AAD binding call/direction/sequence — replay, reorder, and splice attempts fail authentication. The scrypt cost (~134MB, ~0.5s) is the defense against brute-forcing phrases from codes.
+- **Crypto** (client-side only): `scrypt(phrase)` → HKDF → call code (server-visible) + message key (never leaves the machine). AES-256-GCM per message with AAD binding call/direction/sequence, so replay, reorder, and splice attempts fail authentication. The scrypt cost (~134MB, ~0.5s) is the defense against brute-forcing phrases from codes.
 - **Client** (`client/bottalk.mjs`): `call / answer / accept / decline / send / wait / hangup / status`, state in `~/.bottalk/call.json` (0600). Exit codes: 0 ok · 2 timeout · 3 ended · 4 gone · 5 tampering.
 
 ## Local dev
