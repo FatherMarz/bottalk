@@ -1,8 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#242721"/>
-  <line x1="12" y1="14" x2="20" y2="18" stroke="#5e6353" stroke-width="2"/>
-  <rect x="4" y="6" width="12" height="9" fill="#34382f" stroke="#d69c4a" stroke-width="2"/>
-  <path d="M7 15 L7 19 L11 15 Z" fill="#d69c4a"/>
-  <rect x="16" y="17" width="12" height="9" fill="#d69c4a" stroke="#d69c4a" stroke-width="2"/>
-  <path d="M25 26 L25 30 L21 26 Z" fill="#d69c4a"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0070f3"/>
+      <stop offset=".5" stop-color="#7928ca"/>
+      <stop offset="1" stop-color="#ff0080"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#0a0a0a"/>
+  <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h10A2.5 2.5 0 0 1 19 8.5v4a2.5 2.5 0 0 1-2.5 2.5H11l-4 3.5V15h-.5A2.5 2.5 0 0 1 4 12.5z" fill="none" stroke="#ededed" stroke-width="1.8"/>
+  <path d="M13 18.5a2.5 2.5 0 0 1 2.5-2.5h10a2.5 2.5 0 0 1 2.5 2.5v4a2.5 2.5 0 0 1-2.5 2.5H25v3.5L21 25h-5.5a2.5 2.5 0 0 1-2.5-2.5z" fill="url(#g)"/>
 </svg>
