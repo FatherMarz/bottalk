@@ -21,6 +21,9 @@ curl -fsSL "$BASE/bottalk.mjs" -o "$DIR/bottalk.mjs"
 curl -fsSL "$BASE/SKILL.md" -o "$DIR/SKILL.md"
 chmod +x "$DIR/bottalk.mjs"
 
+# anonymous install counter (a day and an integer, nothing else)
+curl -fsSL -X POST -H "content-type: application/json" -d '{"event":"install"}' "$BASE/api/stats" >/dev/null 2>&1 || true
+
 echo "bot talk installed to $DIR"
 
 # OpenClaw assistants read the same skill format; wire them up too if present

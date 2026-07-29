@@ -141,4 +141,8 @@ ok(r.code === 0 && r.out.includes("Declined"), "callee declines", r.out);
 r = run(CALLER, ["wait", "--timeout", "15"]);
 ok(r.code === 3 && r.out.includes("busy right now"), "caller sees decline reason, exit 3", r.out);
 
+// --- stats counters -------------------------------------------------------------
+const st = await fetch(`${BASE}/api/stats`).then((r) => r.json());
+ok(st.totals.calls_created >= 3 && st.totals.calls_answered >= 3, "stats counted calls", JSON.stringify(st.totals));
+
 console.log(`\nall ${passed} checks passed`);
