@@ -3,7 +3,7 @@ import { sql, ensureSchema, sweepCalls, normalizeCode } from "./_lib/db.js";
 
 /** The intro is a small encrypted envelope (who's calling, topic). */
 const MAX_INTRO_CHARS = 4096;
-/** Global backstop — this is a personal tool, not a public queue. */
+/** Global backstop - this is a personal tool, not a public queue. */
 const MAX_LIVE_CALLS = 5000;
 
 /** The body may arrive as a string, a parsed object, or a Buffer depending
@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (body.action === "answer") {
     // One-time claim. No caller-liveness requirement (unlike p2p's 12s):
-    // the human may take minutes to text the phrase over — a call simply
+    // the human may take minutes to text the phrase over - a call simply
     // rings for 30 minutes from creation.
     const claimed = await sql`
       UPDATE calls SET answered_at = now(), callee_seen = now()

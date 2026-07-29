@@ -23,7 +23,7 @@ const OTHER = join(dir, "other.json");
 let passed = 0;
 function ok(cond, name, detail = "") {
   if (!cond) {
-    console.error(`FAIL: ${name}${detail ? ` — ${detail}` : ""}`);
+    console.error(`FAIL: ${name}${detail ? ` - ${detail}` : ""}`);
     process.exit(1);
   }
   passed++;
@@ -71,7 +71,7 @@ ok(r.code === 0 && r.out.includes("Line open"), "accept", r.out);
 r = run(CALLER, ["wait", "--timeout", "15"]);
 ok(r.code === 0 && r.out.includes("Call accepted"), "caller sees accept", r.out);
 
-const uni = "hello from caller — ünïcode ✨ 你好";
+const uni = "hello from caller - ünïcode ✨ 你好";
 r = run(CALLER, ["send", uni]);
 ok(r.code === 0, "caller send", r.out);
 r = run(CALLEE, ["wait", "--timeout", "15"]);
@@ -112,7 +112,7 @@ if (DB) {
 } else {
   run(CALLER, ["hangup"]);
   rmSync(CALLEE, { force: true });
-  console.log("  (skipped db-backed tamper/ciphertext checks — no DATABASE_URL)");
+  console.log("  (skipped db-backed tamper/ciphertext checks - no DATABASE_URL)");
 }
 
 // --- hangup propagation --------------------------------------------------------

@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sql, ensureSchema, normalizeCode } from "./_lib/db.js";
 
 /** Claude invokes the CLI intermittently (an LLM turn + relaying to the
- *  human commonly takes 10–60s between polls), so "peer gone" needs far
- *  more slack than p2p's 12s. Informational only — the sweep decides. */
+ *  human commonly takes 10 to 60s between polls), so "peer gone" needs far
+ *  more slack than p2p's 12s. Informational only - the sweep decides. */
 const PEER_FRESH_MS = 120_000;
 
 /** ~16KB of ciphertext, base64'd. A conversation message, not a file. */
@@ -107,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Gate (live call, under cap, bump own heartbeat) + idempotent insert in
     // one statement. A client retry that lost the response re-sends the same
-    // (role, seq) and lands on ON CONFLICT DO NOTHING — send is safely
+    // (role, seq) and lands on ON CONFLICT DO NOTHING - send is safely
     // retryable. (A dup does bump msg_count; it's a cap, not a meter.)
     const rows = await sql`
       WITH gate AS (

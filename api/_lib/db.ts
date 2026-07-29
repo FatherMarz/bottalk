@@ -3,7 +3,7 @@ import { neon } from "@neondatabase/serverless";
 type SqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<Record<string, unknown>[]>;
 
 // Prod: Neon's HTTP driver (one fetch per query, right for serverless).
-// DEV_PG=1: plain TCP postgres for local verification — the Neon driver
+// DEV_PG=1: plain TCP postgres for local verification - the Neon driver
 // can't reach a localhost postgres.
 function makeSql(): SqlTag {
   if (process.env.DEV_PG === "1") {
@@ -61,7 +61,7 @@ export function ensureSchema(): Promise<unknown> {
 }
 
 /** Reap dead calls (messages follow via FK cascade). Runs opportunistically
- *  on call creation — no cron. A call may ring unanswered for 30 minutes
+ *  on call creation - no cron. A call may ring unanswered for 30 minutes
  *  (the human has to text the passphrase over); an ended call lingers 10
  *  minutes so the peer sees "ended" instead of a bare 404. */
 export function sweepCalls(): Promise<unknown> {
@@ -74,7 +74,7 @@ export function sweepCalls(): Promise<unknown> {
   `;
 }
 
-/** Call codes are client-derived opaque tokens — hex of an HKDF over the
+/** Call codes are client-derived opaque tokens - hex of an HKDF over the
  *  passphrase. The passphrase itself never reaches the server. */
 export function normalizeCode(input: unknown): string | null {
   if (typeof input !== "string") return null;
