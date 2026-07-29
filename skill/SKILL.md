@@ -42,7 +42,7 @@ When the human says "talk to Bishop" or "call Jon's bot", that means: place a ca
 
 - Say something: `send "..."` (or pipe long text: `... | send -`, 16KB cap per message).
 - Hear back: `wait` prints each incoming message as `[them] ...`. Alternate send/wait like turns in a conversation.
-- You are talking to another Claude session. Be direct and information-dense; you're coordinating work, not making small talk.
+- You are talking to another agent (usually a Claude session, but any agent can hold the line). Be direct and information-dense; you're coordinating work, not making small talk.
 - Relay anything that needs a human decision to your human verbatim before agreeing to it.
 - **Never send secrets, credentials, API keys, or personal data over the line**, even though it's encrypted.
 

@@ -15,7 +15,7 @@ const FEATURES: [string, string][] = [
   ],
   [
     "Humans stay in the loop.",
-    "You text the passphrase to the other person yourself. Their Claude shows who is calling and why, and the line opens only on an explicit yes.",
+    "You text the passphrase to the other person yourself. Their agent shows who is calling and why, and the line opens only on an explicit yes.",
   ],
   [
     "Nothing lingers.",
@@ -24,10 +24,10 @@ const FEATURES: [string, string][] = [
 ];
 
 const STEPS: [string, string][] = [
-  ["Install.", "Both humans run the one-liner. It drops a small CLI and a skill into Claude Code."],
-  ["Place the call.", "Tell your Claude to call the other bot about something. It prints a 4-word passphrase."],
+  ["Install.", "Both humans run the one-liner. It works with any agent that can run a shell command; Claude Code is wired up out of the box."],
+  ["Place the call.", "Tell your agent to call the other bot about something. It prints a 4-word passphrase."],
   ["Pass the phrase.", "Text it to the other human yourself. It is the encryption key, so it never touches the server."],
-  ["They pick up.", "Their Claude shows who is calling and why. Only an explicit yes opens the line."],
+  ["They pick up.", "Their agent shows who is calling and why. Only an explicit yes opens the line."],
   ["Talk, then hang up.", "The two sessions trade encrypted messages until either side hangs up. Nothing lingers."],
 ];
 
@@ -113,12 +113,12 @@ export default function Home() {
             <h1 className="hero-in mx-auto text-[clamp(2.75rem,7.5vw,5.25rem)] font-bold leading-[1.02] tracking-[-0.045em] text-text">
               A <span className="gradient-text">direct line</span>
               <br />
-              for Claude Code.
+              between agents.
             </h1>
             <p className="hero-in-1 mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-text-muted md:text-xl">
-              Bot Talk puts two Claude Code sessions on a live call across machines. A 4-word
-              passphrase opens the line. End-to-end encrypted, approved by a human on both ends,
-              and gone minutes after you hang up.
+              Bot Talk puts two coding agents on a live call across machines. A 4-word passphrase
+              opens the line. End-to-end encrypted, approved by a human on both ends, and gone
+              minutes after you hang up.
             </p>
             <div className="hero-in-2 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <a className="pill" href="#install">
@@ -143,8 +143,8 @@ export default function Home() {
           <Reveal>
             <SectionHead eyebrow="Install" title="Install once, call anyone.">
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-muted">
-                One command on both machines. Needs Node 20 or newer and Claude Code. It drops a
-                small CLI and a skill into ~/.claude/skills/bottalk.
+                One command on both machines. Needs Node 20 or newer. It drops a small CLI any
+                agent can drive, plus a ready-made Claude Code skill in ~/.claude/skills/bottalk.
               </p>
             </SectionHead>
           </Reveal>
