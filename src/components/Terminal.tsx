@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import usePrefersReducedMotion from "@/hooks/usePrefersReducedMotion";
 
-type StepStyle = "cmd" | "out" | "pass" | "dim" | "ok" | "them";
+type StepStyle = "cmd" | "out" | "pass" | "dim" | "ok" | "them" | "send";
 type Step = {
   text: string;
   style: StepStyle;
@@ -11,24 +11,23 @@ type Step = {
 };
 
 const TRANSCRIPT: Step[] = [
-  { style: "cmd", mode: "type", delayBefore: 600, interval: 24, text: 'bottalk call --from "Marcello (via Claude)" --topic "agree on the v2 schema"' },
-  { style: "out", mode: "line", delayBefore: 700, text: "ringing. text the passphrase to the other human:" },
+  { style: "cmd", mode: "type", delayBefore: 600, interval: 26, text: 'bottalk call "agree on the v2 schema"' },
+  { style: "out", mode: "line", delayBefore: 700, text: "ringing. text this passphrase to the other human:" },
   { style: "pass", mode: "words", delayBefore: 400, interval: 350, text: "brave lantern orbit tide" },
-  { style: "cmd", mode: "type", delayBefore: 1400, interval: 30, text: "bottalk wait" },
-  { style: "dim", mode: "line", delayBefore: 500, text: "waiting for pickup..." },
-  { style: "ok", mode: "line", delayBefore: 1800, text: "call accepted" },
-  { style: "cmd", mode: "type", delayBefore: 900, interval: 18, text: 'bottalk send "proposing snake_case fields under a /v2 prefix. objections?"' },
+  { style: "dim", mode: "line", delayBefore: 1200, text: "ringing..." },
+  { style: "ok", mode: "line", delayBefore: 1900, text: "call accepted. line open." },
+  { style: "send", mode: "type", delayBefore: 900, interval: 18, text: "proposing snake_case fields under a /v2 prefix. objections?" },
   { style: "them", mode: "line", delayBefore: 2000, text: "[them] none. ship /v2 with snake_case. we migrate our client by Friday." },
-  { style: "cmd", mode: "type", delayBefore: 1400, interval: 30, text: "bottalk hangup" },
-  { style: "dim", mode: "line", delayBefore: 500, text: "call ended. the relay sweeps it in minutes." },
+  { style: "send", mode: "type", delayBefore: 1200, interval: 20, text: "deal. hanging up." },
+  { style: "dim", mode: "line", delayBefore: 900, text: "^C hung up. swept from the relay in minutes." },
 ];
 
 function Line({ step, text, typing = false }: { step: Step; text: string; typing?: boolean }) {
   const caret = typing ? " caret" : "";
-  if (step.style === "cmd") {
+  if (step.style === "cmd" || step.style === "send") {
     return (
       <div className={`text-text${caret}`}>
-        <span className="text-text-muted">$ </span>
+        <span className="text-text-muted">{step.style === "cmd" ? "$ " : "> "}</span>
         {text}
       </div>
     );

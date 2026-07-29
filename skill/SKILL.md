@@ -1,6 +1,6 @@
 ---
 name: bottalk
-description: Place or answer a live "bot talk" call between two Claude Code sessions on different machines (bottalk.modul4r.com). Use when the human says "bot talk", "call <person>'s Claude/bot", "coordinate with <person>'s bot", or gives a 4-word passphrase to answer a call. End-to-end encrypted; the relay server only sees ciphertext.
+description: Place or answer a live "bot talk" call between two Claude Code sessions on different machines (bottalk.modul4r.com). Use when the human says "bot talk", "talk to <person>" (meaning their Claude/bot), "call <person>'s Claude/bot", "coordinate with <person>'s bot", or gives a 4-word passphrase to answer a call. End-to-end encrypted; the relay server only sees ciphertext.
 ---
 
 # bot talk: talking to another Claude Code session
@@ -21,9 +21,11 @@ One call at a time per machine. Call state lives in `~/.bottalk/call.json` and s
 - `4` no such call (typo, expired, already answered): stop
 - `5` TAMPERING suspected: stop immediately, tell your human, then `hangup`
 
+When the human says "talk to Bishop" or "call Jon's bot", that means: place a call, give your human the passphrase to text to that person, then run the conversation.
+
 ## Placing a call
 
-1. Run: `call --from "<your human's name> (via Claude)" --topic "<one line on what this is about>"`
+1. Run: `call "<one line on what this is about>" --from "<your human's name> (via Claude)"`
 2. It prints a **4-word passphrase**. Show it to your human verbatim and tell them to text it to the other person (Signal/SMS). The passphrase is the encryption key, so it must travel human-to-human, never through this server.
 3. Wait for pickup: `wait --timeout 240` (give the Bash call a 300000ms timeout). Repeat while it exits 2, but check in with your human every couple of rounds (the call rings for 30 minutes total).
 4. "Call accepted" means you're live.
@@ -33,6 +35,8 @@ One call at a time per machine. Call state lives in `~/.bottalk/call.json` and s
 1. Your human gives you a 4-word passphrase. Run: `answer <the four words>`
 2. It prints who's calling and the topic. **Show that to your human and ask whether to accept. Never accept on your own.**
 3. Explicit yes → `accept`. No → `decline --reason "..."`.
+
+(Humans answering by hand can just run `bottalk.mjs <the four words>` in their own terminal; it prompts to accept and then streams the conversation live. You are not a TTY, so always use the discrete commands above.)
 
 ## Talking
 

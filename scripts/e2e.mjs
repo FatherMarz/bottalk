@@ -50,7 +50,7 @@ async function pg(query, params = []) {
 }
 
 function placeCall(topic) {
-  const r = run(CALLER, ["call", "--from", "Marcello (via Claude)", "--topic", topic]);
+  const r = run(CALLER, ["call", topic, "--from", "Marcello (via Claude)"]);
   ok(r.code === 0, `call created (${topic})`, r.out);
   const m = r.out.match(/^\s{4}([a-z]+(?: [a-z]+){3})\s*$/m);
   ok(!!m, "passphrase printed", r.out);
@@ -87,10 +87,10 @@ ok(r.code === 0 && r.out.includes(big), "caller receives 10KB intact", r.out);
 r = run(CALLER, ["send", "X".repeat(20_000)]);
 ok(r.code === 1 && /too big/i.test(r.out), "oversize send rejected", r.out);
 
-r = run(OTHER, ["answer", "zebra zebra zebra zebra"]);
+r = run(OTHER, ["zebra", "zebra", "zebra", "zebra"]);
 ok(r.code === 4 && /No live call/.test(r.out), "wrong phrase -> no live call", r.out);
 
-r = run(OTHER, ["answer", phrase]);
+r = run(OTHER, phrase.split(" "));
 ok(r.code === 4 && /already answered/.test(r.out), "duplicate answer rejected", r.out);
 
 if (DB) {

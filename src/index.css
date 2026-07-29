@@ -15,9 +15,9 @@
     --accent: 255 255 255;
     --accent-fg: 10 10 10;
 
-    --grad-1: #0070f3;
-    --grad-2: #7928ca;
-    --grad-3: #ff0080;
+    --grad-1: #00dfd8;
+    --grad-2: #007cf0;
+    --grad-3: #7928ca;
 
     --font-sans: "Geist", -apple-system, "Segoe UI", sans-serif;
     --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
@@ -141,8 +141,8 @@
     height: 30rem;
     transform: translateX(-50%);
     background:
-      radial-gradient(ellipse at 30% 40%, rgba(0, 112, 243, 0.22), transparent 60%),
-      radial-gradient(ellipse at 70% 55%, rgba(255, 0, 128, 0.14), transparent 60%);
+      radial-gradient(ellipse at 30% 40%, rgba(0, 124, 240, 0.22), transparent 60%),
+      radial-gradient(ellipse at 70% 55%, rgba(0, 223, 216, 0.13), transparent 60%);
     filter: blur(90px);
     opacity: 0.55;
     animation: glowDrift 16s ease-in-out infinite alternate;
@@ -196,7 +196,7 @@
     border: 1px solid rgb(var(--border-strong));
     background-color: rgb(var(--surface));
     overflow: hidden;
-    box-shadow: 0 0 80px -20px rgba(0, 112, 243, 0.15);
+    box-shadow: 0 0 80px -20px rgba(0, 124, 240, 0.15);
   }
   .terminal-dot {
     width: 10px;

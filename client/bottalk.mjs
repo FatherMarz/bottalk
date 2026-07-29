@@ -18,9 +18,17 @@ import {
   createDecipheriv,
 } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync, rmSync, chmodSync, existsSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import process from "node:process";
+import { createInterface } from "node:readline";
+
+/** Interactive terminal = live chat mode. Claude-driven Bash pipes are not
+ *  TTYs, so the discrete send/wait flow is untouched. BOTTALK_TTY overrides
+ *  detection (tests drive the interactive mode through pipes). */
+const TTY = process.env.BOTTALK_TTY
+  ? process.env.BOTTALK_TTY === "1"
+  : Boolean(process.stdin.isTTY && process.stdout.isTTY);
 
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.modul4r.com").replace(/\/$/, "");
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
@@ -217,8 +225,8 @@ function openIncoming(s, msg) {
 
 async function cmdCall(args) {
   const from = flag(args, "--from");
-  const topic = flag(args, "--topic");
-  if (!from || !topic) die('Usage: call --from "<who>" --topic "<what this is about>"');
+  const topic = flag(args, "--topic") ?? (args.join(" ").trim() || "(no topic given)");
+  const caller = from ?? userInfo().username;
   if (loadState()) die("A call is already active. `hangup` first, or `status` to inspect it.");
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -226,7 +234,7 @@ async function cmdCall(args) {
     const { code, key } = derive(phrase);
     const intro = seal(key, code, "caller", 0, {
       type: "intro",
-      from,
+      from: caller,
       topic,
       at: new Date().toISOString(),
     });
@@ -234,7 +242,7 @@ async function cmdCall(args) {
     if (r.status === 409) continue; // phrase collision - regenerate
     if (r.status === 503) die("Server is at capacity. Try again in a few minutes.");
     if (r.status !== 200) die(`Could not create the call (${r.status}).`);
-    saveState({
+    const state = {
       v: 1,
       base: BASE,
       code,
@@ -244,11 +252,25 @@ async function cmdCall(args) {
       cursor: 0,
       mySeq: 0,
       peerSeq: 0,
-      intro: { from, topic },
+      intro: { from: caller, topic },
       startedAt: new Date().toISOString(),
-    });
+    };
+    saveState(state);
     console.log("Call created. Text this passphrase to the other human:\n");
     console.log(`    ${phrase.split("-").join(" ")}\n`);
+    if (TTY) {
+      process.removeAllListeners("SIGINT");
+      process.on("SIGINT", () => {
+        void post("/api/call", { action: "hangup", code }).finally(() => {
+          deleteState();
+          console.log("\nCall cancelled.");
+          process.exit(0);
+        });
+      });
+      await ringUntilAccepted(state);
+      await chatLoop(state);
+      return;
+    }
     console.log("It rings for 30 minutes. Run `wait` to wait for pickup.");
     return;
   }
@@ -273,7 +295,7 @@ async function cmdAnswer(args) {
   } catch {
     die("TAMPERING SUSPECTED: the call intro failed decryption. Do not accept.", 5);
   }
-  saveState({
+  const state = {
     v: 1,
     base: BASE,
     code,
@@ -285,10 +307,152 @@ async function cmdAnswer(args) {
     peerSeq: 0,
     intro: { from: intro.from, topic: intro.topic },
     startedAt: new Date().toISOString(),
-  });
+  };
+  saveState(state);
   console.log(`Incoming call from: ${intro.from}`);
   console.log(`Topic: ${intro.topic}\n`);
+  if (TTY) {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await new Promise((resolve) => rl.question("Accept the call? (y/n) ", resolve));
+    rl.close();
+    if (/^y/i.test(answer.trim())) {
+      await sendEnvelope(state, { type: "accept" });
+      state.phase = "live";
+      saveState(state);
+      await chatLoop(state);
+      return;
+    }
+    await sendEnvelope(state, { type: "decline" });
+    await post("/api/call", { action: "hangup", code: state.code }).catch(() => {});
+    deleteState();
+    console.log("Declined.");
+    return;
+  }
   console.log("Run `accept` to open the line, or `decline [--reason \"...\"]` to refuse.");
+}
+
+/** Caller side, interactive: poll until the callee accepts or declines. */
+async function ringUntilAccepted(s) {
+  process.stdout.write("Ringing");
+  for (;;) {
+    await sleep(POLL_MS);
+    let r;
+    try {
+      r = await api(`/api/messages?code=${s.code}&role=${s.role}&after=${s.cursor}`);
+    } catch {
+      continue;
+    }
+    if (r.status === 404) {
+      console.log("\nThe call expired unanswered.");
+      deleteState();
+      process.exit(4);
+    }
+    if (r.status !== 200) continue;
+    let accepted = false;
+    let declined = false;
+    let reason;
+    for (const msg of r.body.msgs ?? []) {
+      const payload = openIncoming(s, msg);
+      if (payload.type === "accept") accepted = true;
+      else if (payload.type === "decline") {
+        declined = true;
+        reason = payload.reason;
+      }
+    }
+    saveState(s);
+    if (declined) {
+      console.log(`\nCall declined${reason ? `: ${reason}` : "."}`);
+      deleteState();
+      process.exit(3);
+    }
+    if (accepted) {
+      s.phase = "live";
+      saveState(s);
+      console.log("\nCall accepted.");
+      return;
+    }
+    if (r.body.ended) {
+      console.log("\nCall ended.");
+      deleteState();
+      process.exit(3);
+    }
+    process.stdout.write(".");
+  }
+}
+
+/** Live line: incoming messages stream in as they arrive; typed lines send.
+ *  Ctrl+C hangs up (a human is present, so the phone metaphor wins). */
+async function chatLoop(s) {
+  console.log("Line open. Type to talk. Ctrl+C hangs up.");
+  process.removeAllListeners("SIGINT");
+  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: "> " });
+  let closing = false;
+  rl.on("SIGINT", () => {
+    if (closing) return;
+    closing = true;
+    rl.close();
+    void (async () => {
+      try {
+        await sendEnvelope(s, { type: "bye" });
+      } catch {
+        // the hangup POST is the authoritative part
+      }
+      await post("/api/call", { action: "hangup", code: s.code }).catch(() => {});
+      deleteState();
+      console.log("\nHung up.");
+      process.exit(0);
+    })();
+  });
+  rl.on("line", (line) => {
+    const text = line.trim();
+    if (!text) {
+      rl.prompt();
+      return;
+    }
+    sendEnvelope(s, { type: "msg", text })
+      .catch(() => {})
+      .finally(() => rl.prompt());
+  });
+  rl.prompt();
+
+  for (;;) {
+    await sleep(POLL_MS);
+    if (closing) return;
+    let r;
+    try {
+      r = await api(`/api/messages?code=${s.code}&role=${s.role}&after=${s.cursor}`);
+    } catch {
+      continue;
+    }
+    if (closing) return;
+    if (r.status === 404) {
+      console.log("\nThe call is gone (expired or swept).");
+      deleteState();
+      process.exit(4);
+    }
+    if (r.status !== 200) continue;
+    for (const msg of r.body.msgs ?? []) {
+      const payload = openIncoming(s, msg);
+      if (payload.type === "msg") {
+        process.stdout.write(`\r\x1b[K[them] ${payload.text}\n`);
+        rl.prompt(true);
+      } else if (payload.type === "bye") {
+        console.log("\nThey hung up.");
+        deleteState();
+        process.exit(3);
+      } else if (payload.type === "decline") {
+        console.log(`\nCall declined${payload.reason ? `: ${payload.reason}` : "."}`);
+        deleteState();
+        process.exit(3);
+      }
+    }
+    saveState(s);
+    if (r.body.ended) {
+      console.log("\nCall ended.");
+      deleteState();
+      process.exit(3);
+    }
+  }
 }
 
 async function cmdAccept() {
@@ -438,21 +602,30 @@ const commands = {
   status: cmdStatus,
 };
 
-if (!commands[cmd]) {
+// A bare 4-word passphrase answers the call: `bottalk brave lantern orbit tide`
+const barePhrase = !commands[cmd] && normalizePhrase([cmd, ...args].filter(Boolean).join(" "));
+
+if (!commands[cmd] && !barePhrase) {
   console.error(`bot talk: E2EE line between two Claude Code sessions
 
 Usage: bottalk.mjs <command>
 
-  call --from "<who>" --topic "<what>"   place a call, prints the passphrase
-  answer <four word passphrase>          answer a ringing call
+  call "<topic>" [--from "<who>"]        place a call, prints the passphrase
+  <four word passphrase>                 answer a ringing call
+  hangup                                 end the call
+  status                                 where things stand
+
+In a terminal, call and answer open a live line: replies stream in, typed
+lines send, Ctrl+C hangs up. From Claude Code these are used instead:
+
+  answer <passphrase>                    answer without going interactive
   accept | decline [--reason "..."]      approve or refuse an answered call
   send <text | ->                        say something (- reads stdin)
   wait [--timeout ${DEFAULT_WAIT_SECS}]                   wait for the other side
-  hangup                                 end the call
-  status                                 where things stand
 
 Server: ${BASE}   State: ${STATE_PATH}`);
   process.exit(cmd ? 1 : 0);
 }
 
-commands[cmd](args).catch((err) => die(err?.message ?? String(err)));
+const run = barePhrase ? () => cmdAnswer([barePhrase]) : () => commands[cmd](args);
+run().catch((err) => die(err?.message ?? String(err)));
