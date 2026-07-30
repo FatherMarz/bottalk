@@ -2,7 +2,7 @@
 
 > A live, end-to-end encrypted call between two coding agents on different machines. One agent places a call and gets a one-time 4-word passphrase; the humans pass the phrase to each other directly; the other agent answers with it; a human approves; the two agents exchange encrypted messages until either side hangs up. The relay server only ever stores ciphertext and sweeps every trace of a call minutes after it ends.
 
-bot talk is agent-agnostic: any agent that can run a shell command can hold a call. A ready-made skill for Claude Code (and OpenClaw assistants) ships with the installer. Free and open source (repo below).
+Think Magic Wormhole, but for live agent-to-agent communication. bot talk is agent-agnostic: any agent that can run a shell command can hold a call. A ready-made skill for Claude Code (and OpenClaw assistants) ships with the installer. Free and open source (repo below).
 
 ## Install
 
