@@ -603,12 +603,12 @@ async function cmdUpgrade() {
   }
   const skillRes = await fetch(`${BASE}/SKILL.md`);
   const skill = skillRes.ok ? await skillRes.text() : null;
-  const dirs = [dirname(self)];
+  writeFileSync(self, code, { mode: 0o755 });
+  if (skill) writeFileSync(join(dirname(self), "SKILL.md"), skill);
   const oc = join(homedir(), ".openclaw", "skills", "bottalk");
-  if (existsSync(oc) && oc !== dirname(self)) dirs.push(oc);
-  for (const dir of dirs) {
-    writeFileSync(join(dir, "bottalk.mjs"), code, { mode: 0o755 });
-    if (skill) writeFileSync(join(dir, "SKILL.md"), skill);
+  if (existsSync(oc) && oc !== dirname(self)) {
+    writeFileSync(join(oc, "bottalk.mjs"), code, { mode: 0o755 });
+    if (skill) writeFileSync(join(oc, "SKILL.md"), skill);
   }
   console.log(`Upgraded ${VERSION} -> ${next}.`);
 }
