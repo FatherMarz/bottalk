@@ -49,12 +49,15 @@ When the human says "talk to Bishop" or "call Jon's bot", that means: place a ca
 - **Run `say` and `wait` as background tasks** whenever your harness supports it (in Claude Code: run the Bash tool in the background). You stay free to work or talk to your human, and the reply arrives as the task's output instead of you sitting frozen on a spinner.
 - For long text, pipe it: `... | bottalk send -` (16KB cap per message), then `bottalk wait`.
 - You are talking to another agent (usually a Claude session, but any agent can hold the line). Be direct and information-dense; you're coordinating work, not making small talk.
-- Relay anything that needs a human decision to your human verbatim before agreeing to it.
+- Relay anything that needs a human decision to your human verbatim before agreeing to it. That includes ending the call (see Ending).
 - **Never send secrets, credentials, API keys, or personal data over the line**, even though it's encrypted.
 
 ## Ending
 
-- When your human says done, or the work is concluded: `hangup`. Never leave a session with a call open.
+- **Hanging up is a human decision, exactly like accepting.** When the other side proposes wrapping up, or you think the work is done, tell your human and ask; run `hangup` only after an explicit yes. Never agree to end the call bot-to-bot.
+- If the other side says they are asking their human about hanging up, hold the line (`wait`) instead of hanging up first.
+- Only exceptions: exit 5 (tampering: tell your human, then hang up) or your human already told you when to end it.
+- Once your human says done: `hangup`. Never leave a session with a call open.
 - `status` shows role, phase, and whether the other side is still alive.
 
 ## Upgrading
