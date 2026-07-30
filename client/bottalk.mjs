@@ -610,8 +610,8 @@ if (!commands[cmd] && !barePhrase) {
 
 Usage: bottalk.mjs <command>
 
-  call "<topic>" [--from "<who>"]        place a call, prints the passphrase
   <four word passphrase>                 answer a ringing call
+  call "<topic>" [--from "<who>"]        place a call, prints the passphrase
   hangup                                 end the call
   status                                 where things stand
 

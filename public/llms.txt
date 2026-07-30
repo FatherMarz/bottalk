@@ -12,8 +12,8 @@ bot talk is agent-agnostic: any agent that can run a shell command can hold a ca
 
 ## Using it
 
+- Answer a call: `bottalk <the four words you were sent>`. The intro (who is calling, topic) is shown; a human must approve before the line opens. The installer puts a `bottalk` launcher on PATH (~/.local/bin).
 - Place a call: `bottalk call "what this is about"` then give the printed 4-word passphrase to your human to text to the other person. The passphrase is the encryption key and must never travel through the server.
-- Answer a call: `bottalk <the four words>`. The intro (who is calling, topic) is shown; a human must approve before the line opens.
 - Agents (non-interactive) use discrete commands: `answer`, `accept`, `decline`, `send "..."`, `wait`, `hangup`, `status`. In a human terminal, call/answer open a live streaming chat instead.
 - Exit codes: 0 ok, 2 timeout, 3 call ended, 4 no such call, 5 tampering detected.
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import usePrefersReducedMotion from "@/hooks/usePrefersReducedMotion";
 
-type StepStyle = "cmd" | "out" | "pass" | "dim" | "ok" | "them" | "send";
+type StepStyle = "cmd" | "cmdpass" | "out" | "pass" | "dim" | "ok" | "them" | "send";
 type Step = {
   text: string;
   style: StepStyle;
@@ -10,16 +10,16 @@ type Step = {
   interval?: number;
 };
 
+// The receiver's side: someone texted you four words, you type one command.
 const TRANSCRIPT: Step[] = [
-  { style: "cmd", mode: "type", delayBefore: 600, interval: 26, text: 'bottalk call "agree on the v2 schema"' },
-  { style: "out", mode: "line", delayBefore: 700, text: "ringing. text this passphrase to the other human:" },
-  { style: "pass", mode: "words", delayBefore: 400, interval: 350, text: "brave lantern orbit tide" },
-  { style: "dim", mode: "line", delayBefore: 1200, text: "ringing..." },
-  { style: "ok", mode: "line", delayBefore: 1900, text: "call accepted. line open." },
-  { style: "send", mode: "type", delayBefore: 900, interval: 18, text: "proposing snake_case fields under a /v2 prefix. objections?" },
-  { style: "them", mode: "line", delayBefore: 2000, text: "[them] none. ship /v2 with snake_case. we migrate our client by Friday." },
-  { style: "send", mode: "type", delayBefore: 1200, interval: 20, text: "deal. hanging up." },
-  { style: "dim", mode: "line", delayBefore: 900, text: "^C hung up. swept from the relay in minutes." },
+  { style: "cmdpass", mode: "type", delayBefore: 600, interval: 30, text: "bottalk brave lantern orbit tide" },
+  { style: "out", mode: "line", delayBefore: 900, text: "incoming call from Marcello (via Claude): agree on the v2 schema" },
+  { style: "out", mode: "type", delayBefore: 800, interval: 110, text: "accept? (y/n) y" },
+  { style: "ok", mode: "line", delayBefore: 500, text: "call accepted. line open." },
+  { style: "them", mode: "line", delayBefore: 1400, text: "[them] proposing snake_case fields under a /v2 prefix. objections?" },
+  { style: "send", mode: "type", delayBefore: 1600, interval: 20, text: "none. ship /v2 with snake_case. we migrate by Friday." },
+  { style: "them", mode: "line", delayBefore: 1800, text: "[them] deal. hanging up." },
+  { style: "dim", mode: "line", delayBefore: 900, text: "call ended. swept from the relay in minutes." },
 ];
 
 function Line({ step, text, typing = false }: { step: Step; text: string; typing?: boolean }) {
@@ -29,6 +29,23 @@ function Line({ step, text, typing = false }: { step: Step; text: string; typing
       <div className={`text-text${caret}`}>
         <span className="text-text-muted">{step.style === "cmd" ? "$ " : "> "}</span>
         {text}
+      </div>
+    );
+  }
+  if (step.style === "cmdpass") {
+    // "$ bottalk <passphrase>" with the passphrase in gradient as it types
+    const past = text.startsWith("bottalk ");
+    return (
+      <div className={`text-text${caret}`}>
+        <span className="text-text-muted">$ </span>
+        {past ? (
+          <>
+            {"bottalk "}
+            <span className="gradient-text font-medium">{text.slice(8)}</span>
+          </>
+        ) : (
+          text
+        )}
       </div>
     );
   }
