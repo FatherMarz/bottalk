@@ -44,8 +44,8 @@ function child(state, args) {
 
 console.log(`interactive e2e against ${BASE}\n`);
 
-// Caller places the call with a positional topic and starts ringing.
-const caller = child("caller.json", ["call", "stream test", "--from", "Lenny"]);
+// Caller places the call and starts ringing.
+const caller = child("caller.json", ["call", "--from", "Lenny"]);
 await caller.waitFor(/ {4}([a-z]+ [a-z]+ [a-z]+ [a-z]+)/);
 const phrase = caller.buf.match(/ {4}([a-z]+ [a-z]+ [a-z]+ [a-z]+)/)[1];
 ok(true, `caller ringing with passphrase "${phrase}"`);
@@ -54,7 +54,7 @@ await caller.waitFor(/Ringing/);
 // Callee answers with the BARE passphrase (no subcommand) and approves.
 const callee = child("callee.json", phrase.split(" "));
 await callee.waitFor(/Accept the call\? \(y\/n\)/);
-ok(callee.buf.includes("Lenny") && callee.buf.includes("stream test"), "callee sees intro before approving");
+ok(callee.buf.includes("Lenny"), "callee sees who is calling before approving");
 callee.stdin.write("y\n");
 
 // Both sides land in the live line.

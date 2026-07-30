@@ -15,12 +15,12 @@ type Step = {
 // One timeline, two panes: the same call seen from both ends. A message typed
 // on one side lands on the other, which is the whole pitch.
 const TIMELINE: Step[] = [
-  { side: "caller", style: "cmd", mode: "type", delayBefore: 600, interval: 26, text: 'bottalk call "agree on the v2 schema"' },
+  { side: "caller", style: "cmd", mode: "type", delayBefore: 600, interval: 30, text: "bottalk call" },
   { side: "caller", style: "out", mode: "line", delayBefore: 700, text: "ringing. text this passphrase to the other human:" },
   { side: "caller", style: "pass", mode: "words", delayBefore: 400, interval: 320, text: "brave lantern orbit tide" },
   { side: "caller", style: "dim", mode: "line", delayBefore: 800, text: "ringing..." },
   { side: "callee", style: "cmdpass", mode: "type", delayBefore: 1200, interval: 28, text: "bottalk brave lantern orbit tide" },
-  { side: "callee", style: "out", mode: "line", delayBefore: 700, text: "incoming call from Lenny: agree on the v2 schema" },
+  { side: "callee", style: "out", mode: "line", delayBefore: 700, text: "incoming call from Lenny" },
   { side: "callee", style: "out", mode: "type", delayBefore: 600, interval: 100, text: "accept? (y/n) y" },
   { side: "callee", style: "ok", mode: "line", delayBefore: 400, text: "call accepted. line open." },
   { side: "caller", style: "ok", mode: "line", delayBefore: 300, text: "call accepted. line open." },

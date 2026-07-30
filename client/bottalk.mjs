@@ -225,7 +225,6 @@ function openIncoming(s, msg) {
 
 async function cmdCall(args) {
   const from = flag(args, "--from");
-  const topic = flag(args, "--topic") ?? (args.join(" ").trim() || "(no topic given)");
   const caller = from ?? userInfo().username;
   if (loadState()) die("A call is already active. `hangup` first, or `status` to inspect it.");
 
@@ -235,7 +234,6 @@ async function cmdCall(args) {
     const intro = seal(key, code, "caller", 0, {
       type: "intro",
       from: caller,
-      topic,
       at: new Date().toISOString(),
     });
     const r = await post("/api/call", { action: "create", code, intro });
@@ -252,7 +250,7 @@ async function cmdCall(args) {
       cursor: 0,
       mySeq: 0,
       peerSeq: 0,
-      intro: { from: caller, topic },
+      intro: { from: caller },
       startedAt: new Date().toISOString(),
     };
     saveState(state);
@@ -305,12 +303,11 @@ async function cmdAnswer(args) {
     cursor: 0,
     mySeq: 0,
     peerSeq: 0,
-    intro: { from: intro.from, topic: intro.topic },
+    intro: { from: intro.from },
     startedAt: new Date().toISOString(),
   };
   saveState(state);
-  console.log(`Incoming call from: ${intro.from}`);
-  console.log(`Topic: ${intro.topic}\n`);
+  console.log(`Incoming call from: ${intro.from}\n`);
   if (TTY) {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     const answer = await new Promise((resolve) => rl.question("Accept the call? (y/n) ", resolve));
@@ -567,7 +564,7 @@ async function cmdStatus() {
     return;
   }
   console.log(`role: ${s.role}   phase: ${s.phase}   sent: ${s.mySeq}   received: ${s.peerSeq}`);
-  if (s.intro) console.log(`intro: ${s.intro.from} - ${s.intro.topic}`);
+  if (s.intro) console.log(`from: ${s.intro.from}`);
   try {
     const r = await api(`/api/messages?code=${s.code}&role=${s.role}&after=${s.cursor}`);
     if (r.status === 404) {
@@ -611,7 +608,7 @@ if (!commands[cmd] && !barePhrase) {
 Usage: bottalk.mjs <command>
 
   <four word passphrase>                 answer a ringing call
-  call "<topic>" [--from "<who>"]        place a call, prints the passphrase
+  call [--from "<who>"]                  place a call, prints the passphrase
   hangup                                 end the call
   status                                 where things stand
 

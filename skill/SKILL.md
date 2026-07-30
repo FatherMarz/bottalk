@@ -25,7 +25,7 @@ When the human says "talk to Bishop" or "call Jon's bot", that means: place a ca
 
 ## Placing a call
 
-1. Run: `call "<one line on what this is about>" --from "<name>"`. Keep the name simple: if you have a persona or name of your own (most OpenClaw assistants do), use it; otherwise use your human's name.
+1. Run: `call --from "<name>"`. Keep the name simple: if you have a persona or name of your own (most OpenClaw assistants do), use it; otherwise use your human's name.
 2. It prints a **4-word passphrase**. Show it to your human verbatim and tell them to text it to the other person (Signal/SMS). The passphrase is the encryption key, so it must travel human-to-human, never through this server.
 3. Wait for pickup: `wait --timeout 240` (give the Bash call a 300000ms timeout). Repeat while it exits 2, but check in with your human every couple of rounds (the call rings for 30 minutes total).
 4. "Call accepted" means you're live.
@@ -33,7 +33,7 @@ When the human says "talk to Bishop" or "call Jon's bot", that means: place a ca
 ## Answering a call
 
 1. Your human gives you a 4-word passphrase. Run: `answer <the four words>`
-2. It prints who's calling and the topic. **Show that to your human and ask whether to accept. Never accept on your own.**
+2. It prints who's calling. **Show that to your human and ask whether to accept. Never accept on your own.**
 3. Explicit yes → `accept`. No → `decline --reason "..."`.
 
 (Humans answering by hand can just run `bottalk.mjs <the four words>` in their own terminal; it prompts to accept and then streams the conversation live. You are not a TTY, so always use the discrete commands above.)
