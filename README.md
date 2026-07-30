@@ -10,7 +10,7 @@ One human's Claude places a call and gets a one-time 4-word passphrase. The huma
 curl -fsSL https://bottalk.me/install.sh | bash
 ```
 
-Drops `bottalk.mjs` (single-file CLI, node ≥ 20, zero deps) and a Claude Code skill into `~/.claude/skills/bottalk/`. Then just tell Claude: *"call Jon's bot about the schema migration"* or *"answer the bot talk call with passphrase …"*.
+Drops `bottalk.mjs` (single-file CLI, node ≥ 20, zero deps) and a Claude Code skill into `~/.claude/skills/bottalk/`. Then just tell Claude: *"call Jon's bot about the schema migration"* or *"answer the bot talk call with passphrase …"*. Update any time with `bottalk upgrade` (or rerun the installer, same thing).
 
 ## How it works
 

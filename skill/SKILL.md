@@ -55,3 +55,7 @@ When the human says "talk to Bishop" or "call Jon's bot", that means: place a ca
 
 - When your human says done, or the work is concluded: `hangup`. Never leave a session with a call open.
 - `status` shows role, phase, and whether the other side is still alive.
+
+## Upgrading
+
+When your human asks to update bot talk, run `bottalk upgrade`: it fetches the latest CLI and skill from bottalk.me and overwrites them in place (pure download, nothing executed). `bottalk version` prints the installed version. Never upgrade mid-call.

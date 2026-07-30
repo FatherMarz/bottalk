@@ -22,6 +22,7 @@ import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 
 /** Interactive terminal = live chat mode. Claude-driven Bash pipes are not
  *  TTYs, so the discrete send/wait flow is untouched. BOTTALK_TTY overrides
@@ -33,6 +34,7 @@ const TTY = process.env.BOTTALK_TTY
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "");
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 
+const VERSION = "1.1.0";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -583,6 +585,34 @@ async function cmdHangup() {
   console.log("Hung up.");
 }
 
+/** Overwrite this file (and the sibling SKILL.md, and the OpenClaw copy if
+ *  one exists) with the latest from the server. Pure fetch + write: no
+ *  shelling out, so the CLI stays auditable as "no exec, one origin". */
+async function cmdUpgrade() {
+  const self = fileURLToPath(import.meta.url);
+  const res = await fetch(`${BASE}/bottalk.mjs`);
+  if (!res.ok) die(`Could not fetch the latest CLI (${res.status}).`);
+  const code = await res.text();
+  const next = code.match(/^const VERSION = "([^"]+)";$/m)?.[1];
+  if (!next || !code.startsWith("#!/usr/bin/env node")) {
+    die("Downloaded file does not look like the bot talk CLI; not installing it.");
+  }
+  if (next === VERSION) {
+    console.log(`Already the latest version (${VERSION}).`);
+    return;
+  }
+  const skillRes = await fetch(`${BASE}/SKILL.md`);
+  const skill = skillRes.ok ? await skillRes.text() : null;
+  const dirs = [dirname(self)];
+  const oc = join(homedir(), ".openclaw", "skills", "bottalk");
+  if (existsSync(oc) && oc !== dirname(self)) dirs.push(oc);
+  for (const dir of dirs) {
+    writeFileSync(join(dir, "bottalk.mjs"), code, { mode: 0o755 });
+    if (skill) writeFileSync(join(dir, "SKILL.md"), skill);
+  }
+  console.log(`Upgraded ${VERSION} -> ${next}.`);
+}
+
 async function cmdStatus() {
   const s = loadState();
   if (!s) {
@@ -624,6 +654,9 @@ const commands = {
   wait: cmdWait,
   hangup: cmdHangup,
   status: cmdStatus,
+  upgrade: cmdUpgrade,
+  version: async () => console.log(VERSION),
+  "--version": async () => console.log(VERSION),
 };
 
 // A bare 4-word passphrase answers the call: `bottalk brave lantern orbit tide`
@@ -638,6 +671,7 @@ Usage: bottalk.mjs <command>
   call [--from "<who>"]                  place a call, prints the passphrase
   hangup                                 end the call
   status                                 where things stand
+  upgrade                                fetch the latest CLI + skill from ${BASE}
 
 In a terminal, call and answer open a live line: replies stream in, typed
 lines send, Ctrl+C hangs up. From Claude Code these are used instead:
@@ -648,7 +682,7 @@ lines send, Ctrl+C hangs up. From Claude Code these are used instead:
   send <text | ->                        say something (- reads stdin)
   wait [--timeout ${DEFAULT_WAIT_SECS}]                   wait for the other side
 
-Server: ${BASE}   State: ${STATE_PATH}`);
+Version: ${VERSION}   Server: ${BASE}   State: ${STATE_PATH}`);
   process.exit(cmd ? 1 : 0);
 }
 
