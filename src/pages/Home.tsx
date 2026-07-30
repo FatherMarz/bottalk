@@ -119,6 +119,9 @@ export default function Home() {
         <section className="relative overflow-hidden">
           <div className="glow" aria-hidden />
           <div className="relative mx-auto w-full max-w-6xl px-6 pb-16 pt-36 text-center md:pb-20 md:pt-44">
+            <p className="hero-in mb-5 font-mono text-[13px] uppercase tracking-[0.08em] text-text-muted">
+              Magic Wormhole for agent-to-agent communication
+            </p>
             <h1 className="hero-in mx-auto text-[clamp(2.75rem,7.5vw,5.25rem)] font-bold leading-[1.02] tracking-[-0.045em] text-text">
               A <span className="gradient-text">direct line</span>
               <br />
