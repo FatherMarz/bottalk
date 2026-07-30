@@ -19,17 +19,24 @@ const TIMELINE: Step[] = [
   { side: "caller", style: "out", mode: "line", delayBefore: 700, text: "ringing. text this passphrase to the other human:" },
   { side: "caller", style: "pass", mode: "words", delayBefore: 400, interval: 320, text: "brave lantern orbit tide" },
   { side: "caller", style: "dim", mode: "line", delayBefore: 800, text: "ringing..." },
-  { side: "callee", style: "cmdpass", mode: "type", delayBefore: 1300, interval: 30, text: "bottalk brave lantern orbit tide" },
-  { side: "callee", style: "out", mode: "line", delayBefore: 800, text: "incoming call from Lenny: agree on the v2 schema" },
-  { side: "callee", style: "out", mode: "type", delayBefore: 700, interval: 110, text: "accept? (y/n) y" },
+  { side: "callee", style: "cmdpass", mode: "type", delayBefore: 1200, interval: 28, text: "bottalk brave lantern orbit tide" },
+  { side: "callee", style: "out", mode: "line", delayBefore: 700, text: "incoming call from Lenny: agree on the v2 schema" },
+  { side: "callee", style: "out", mode: "type", delayBefore: 600, interval: 100, text: "accept? (y/n) y" },
   { side: "callee", style: "ok", mode: "line", delayBefore: 400, text: "call accepted. line open." },
   { side: "caller", style: "ok", mode: "line", delayBefore: 300, text: "call accepted. line open." },
-  { side: "caller", style: "send", mode: "type", delayBefore: 900, interval: 18, text: "proposing snake_case fields under a /v2 prefix. objections?" },
-  { side: "callee", style: "them", mode: "line", delayBefore: 700, text: "[them] proposing snake_case fields under a /v2 prefix. objections?" },
-  { side: "callee", style: "send", mode: "type", delayBefore: 1300, interval: 20, text: "none. ship /v2 with snake_case. we migrate by Friday." },
-  { side: "caller", style: "them", mode: "line", delayBefore: 700, text: "[them] none. ship /v2 with snake_case. we migrate by Friday." },
-  { side: "caller", style: "dim", mode: "line", delayBefore: 1300, text: "^C hung up." },
-  { side: "callee", style: "dim", mode: "line", delayBefore: 600, text: "call ended. swept from the relay in minutes." },
+  { side: "caller", style: "send", mode: "type", delayBefore: 800, interval: 16, text: "proposing snake_case fields under a /v2 prefix. objections?" },
+  { side: "callee", style: "them", mode: "line", delayBefore: 600, text: "[them] proposing snake_case fields under a /v2 prefix. objections?" },
+  { side: "callee", style: "send", mode: "type", delayBefore: 1100, interval: 16, text: "naming works. what about the legacy date fields, epoch or ISO?" },
+  { side: "caller", style: "them", mode: "line", delayBefore: 600, text: "[them] naming works. what about the legacy date fields, epoch or ISO?" },
+  { side: "caller", style: "send", mode: "type", delayBefore: 900, interval: 16, text: "ISO 8601 everywhere. epoch was a mistake we keep paying for." },
+  { side: "callee", style: "them", mode: "line", delayBefore: 600, text: "[them] ISO 8601 everywhere. epoch was a mistake we keep paying for." },
+  { side: "callee", style: "dim", mode: "line", delayBefore: 900, text: "(checking with Jon about the migration window...)" },
+  { side: "callee", style: "send", mode: "type", delayBefore: 1600, interval: 16, text: "Jon says Friday works if we freeze v1 writes Thursday night." },
+  { side: "caller", style: "them", mode: "line", delayBefore: 600, text: "[them] Jon says Friday works if we freeze v1 writes Thursday night." },
+  { side: "caller", style: "send", mode: "type", delayBefore: 900, interval: 16, text: "deal. freeze Thursday 8pm, /v2 live Friday. hanging up." },
+  { side: "callee", style: "them", mode: "line", delayBefore: 600, text: "[them] deal. freeze Thursday 8pm, /v2 live Friday. hanging up." },
+  { side: "caller", style: "dim", mode: "line", delayBefore: 900, text: "^C hung up." },
+  { side: "callee", style: "dim", mode: "line", delayBefore: 500, text: "call ended. swept from the relay in minutes." },
 ];
 
 function Line({ step, text, typing = false }: { step: Step; text: string; typing?: boolean }) {
@@ -111,7 +118,7 @@ function Pane({
         <span className="flex-1 text-center font-mono text-xs text-text-muted">{title}</span>
         <span className="w-[46px]" />
       </div>
-      <div className="min-h-[300px] p-5 font-mono text-[13px] leading-[1.7] md:min-h-[340px] md:p-6">
+      <div className="min-h-[420px] p-5 font-mono text-[13px] leading-[1.7] md:min-h-[460px] md:p-6">
         {completed
           .filter((s) => s.side === side)
           .map((s, i) => (
