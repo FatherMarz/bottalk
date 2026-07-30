@@ -184,8 +184,8 @@ export default function Watch() {
     }
   }
 
-  async function start() {
-    const phrase = normalizePhrase(input);
+  async function start(given?: string) {
+    const phrase = normalizePhrase(given ?? input);
     if (!phrase) {
       setError("That is not a 4-word passphrase.");
       return;
@@ -206,6 +206,21 @@ export default function Watch() {
     }
     setBusy(null);
   }
+
+  // The CLI opens /watch#four-word-phrase when a call goes live. Fragments
+  // never reach any server; scrub it from the address bar and history
+  // immediately, then start watching without any typing.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    const frag = decodeURIComponent(window.location.hash.slice(1));
+    const phrase = normalizePhrase(frag);
+    if (!phrase || autoStarted.current) return;
+    autoStarted.current = true;
+    history.replaceState(null, "", window.location.pathname);
+    setInput(phrase.split("-").join(" "));
+    void start(phrase);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!keys) return;

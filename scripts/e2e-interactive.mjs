@@ -21,7 +21,7 @@ function ok(cond, name, detail = "") {
 
 function child(state, args) {
   const p = spawn("node", [CLI, ...args], {
-    env: { ...process.env, BOTTALK_BASE: BASE, BOTTALK_STATE: join(dir, state), BOTTALK_TTY: "1" },
+    env: { ...process.env, BOTTALK_BASE: BASE, BOTTALK_STATE: join(dir, state), BOTTALK_TTY: "1", BOTTALK_NO_BROWSER: "1" },
   });
   p.buf = "";
   p.stdout.on("data", (d) => (p.buf += d.toString()));
