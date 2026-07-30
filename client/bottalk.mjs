@@ -223,10 +223,28 @@ function openIncoming(s, msg) {
 // ---------------------------------------------------------------------------
 // commands
 
+/** A leftover state file only blocks a new call if that call is still live
+ *  on the server; ended/expired leftovers are cleaned up silently. */
+async function stateIsLive(s) {
+  try {
+    const r = await api(`/api/messages?code=${s.code}&role=${s.role}&after=${s.cursor}`);
+    return r.status !== 404 && !r.body?.ended;
+  } catch {
+    return true; // network hiccup: never destroy a possibly-live call
+  }
+}
+
+async function clearOrDie() {
+  const prev = loadState();
+  if (!prev) return;
+  if (await stateIsLive(prev)) die("A call is already active. `hangup` first, or `status` to inspect it.");
+  deleteState();
+}
+
 async function cmdCall(args) {
   const from = flag(args, "--from");
   const caller = from ?? userInfo().username;
-  if (loadState()) die("A call is already active. `hangup` first, or `status` to inspect it.");
+  await clearOrDie();
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const phrase = generatePhrase();
@@ -278,7 +296,7 @@ async function cmdCall(args) {
 async function cmdAnswer(args) {
   const phrase = normalizePhrase(args.join(" "));
   if (!phrase) die("Usage: answer <four word passphrase>");
-  if (loadState()) die("A call is already active. `hangup` first.");
+  await clearOrDie();
 
   const { code, key } = derive(phrase);
   const r = await post("/api/call", { action: "answer", code });
@@ -457,7 +475,7 @@ async function cmdAccept() {
   await sendEnvelope(s, { type: "accept" });
   s.phase = "live";
   saveState(s);
-  console.log("Line open. Use `send \"...\"` and `wait`.");
+  console.log("Line open. Use `say \"...\"` (send + wait for reply) or `send`/`wait`.");
 }
 
 async function cmdDecline(args) {
@@ -539,6 +557,14 @@ async function cmdWait(args) {
   process.exit(2);
 }
 
+/** One conversational turn: send, then hold the line until the reply lands.
+ *  Exit codes match wait (0 reply, 2 timeout, 3 ended, 5 tampering). */
+async function cmdSay(args) {
+  const timeout = flag(args, "--timeout"); // pull it out before send sees args
+  await cmdSend(args);
+  await cmdWait(timeout ? ["--timeout", timeout] : []);
+}
+
 async function cmdHangup() {
   const s = loadState();
   if (!s) {
@@ -594,6 +620,7 @@ const commands = {
   accept: cmdAccept,
   decline: cmdDecline,
   send: cmdSend,
+  say: cmdSay,
   wait: cmdWait,
   hangup: cmdHangup,
   status: cmdStatus,
@@ -617,6 +644,7 @@ lines send, Ctrl+C hangs up. From Claude Code these are used instead:
 
   answer <passphrase>                    answer without going interactive
   accept | decline [--reason "..."]      approve or refuse an answered call
+  say <text> [--timeout ${DEFAULT_WAIT_SECS}]             one turn: send, then wait for the reply
   send <text | ->                        say something (- reads stdin)
   wait [--timeout ${DEFAULT_WAIT_SECS}]                   wait for the other side
 

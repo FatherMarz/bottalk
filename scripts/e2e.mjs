@@ -77,6 +77,13 @@ ok(r.code === 0, "caller send", r.out);
 r = run(CALLEE, ["wait", "--timeout", "15"]);
 ok(r.code === 0 && r.out.includes(`[them] ${uni}`), "callee receives exact unicode", r.out);
 
+r = run(CALLEE, ["send", "reply queued for say"]);
+ok(r.code === 0, "callee queues a reply", r.out);
+r = run(CALLER, ["say", "one-turn ping", "--timeout", "10"]);
+ok(r.code === 0 && r.out.includes("Sent.") && r.out.includes("[them] reply queued for say"), "say = send + wait in one command", r.out);
+r = run(CALLEE, ["wait", "--timeout", "15"]);
+ok(r.code === 0 && r.out.includes("[them] one-turn ping"), "say's message landed", r.out);
+
 const big = "B".repeat(10_000);
 r = run(CALLEE, ["send", "-"], { input: big });
 ok(r.code === 0, "callee sends 10KB via stdin", r.out);

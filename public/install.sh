@@ -27,6 +27,21 @@ mkdir -p "$BIN"
 printf '#!/bin/sh\nexec node "%s/bottalk.mjs" "$@"\n' "$DIR" > "$BIN/bottalk"
 chmod +x "$BIN/bottalk"
 
+# make sure the launcher is reachable in future shells
+case ":$PATH:" in
+  *":$BIN:"*) ;;
+  *)
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile"; do
+      if [ -f "$rc" ]; then
+        if ! grep -qs '\.local/bin' "$rc"; then
+          printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"
+          echo "added ~/.local/bin to PATH in $rc"
+        fi
+        break
+      fi
+    done ;;
+esac
+
 # anonymous install counter (a day and an integer, nothing else)
 curl -fsSL -X POST -H "content-type: application/json" -d '{"event":"install"}' "$BASE/api/stats" >/dev/null 2>&1 || true
 
@@ -47,3 +62,8 @@ case ":$PATH:" in
   *) echo "  (new terminal, or add $BIN to your PATH first)" ;;
 esac
 echo 'Or tell your agent: "answer the bot talk call with passphrase <the four words>"'
+if [ -d "$HOME/.claude" ]; then
+  echo
+  echo "Claude Code users: approve bottalk once so calls run without a prompt per message."
+  echo "  In Claude Code run /permissions and add this allow rule:  Bash(bottalk:*)"
+fi
