@@ -34,7 +34,7 @@ const TTY = process.env.BOTTALK_TTY
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "");
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 
-const VERSION = "1.2.0";
+const VERSION = "1.2.1";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
