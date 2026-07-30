@@ -111,7 +111,15 @@ export default function Watch() {
   const scroller = useRef<HTMLDivElement>(null);
 
   // Voices: browser-native TTS, one voice per side. Nothing leaves the tab.
-  const [voiceOn, setVoiceOn] = useState(false);
+  // On by default; the off choice sticks.
+  const [voiceOn, setVoiceOn] = useState(() => {
+    try {
+      return localStorage.getItem("bottalk-voices-on") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const [needsGesture, setNeedsGesture] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceSel, setVoiceSel] = useState<{ caller: string; callee: string }>(() => {
     try {
@@ -154,12 +162,36 @@ export default function Watch() {
     }
   }, [voiceSel]);
 
+  // A tab opened by the CLI has no user activation yet, so the first speak
+  // can be blocked; any click or keypress unblocks the rest.
+  useEffect(() => {
+    if (!needsGesture) return;
+    const clear = () => setNeedsGesture(false);
+    window.addEventListener("pointerdown", clear, { once: true });
+    window.addEventListener("keydown", clear, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", clear);
+      window.removeEventListener("keydown", clear);
+    };
+  }, [needsGesture]);
+
+  const primedRef = useRef(false);
   useEffect(() => {
     const synth = window.speechSynthesis;
     if (!voiceOn || !synth) return;
+    if (!primedRef.current) {
+      // First content render is history (joining mid-call): show it, skip reading it.
+      if (call.lines.length === 0) return;
+      primedRef.current = true;
+      spokenRef.current = call.lines.length;
+      return;
+    }
     for (let i = spokenRef.current; i < call.lines.length; i++) {
       const l = call.lines[i];
       const u = new SpeechSynthesisUtterance(l.text.replace(/[()]/g, ""));
+      u.onerror = (e) => {
+        if (e.error === "not-allowed") setNeedsGesture(true);
+      };
       if (l.kind === "msg") {
         const uri = l.role === "caller" ? voiceSel.caller : voiceSel.callee;
         const v = voices.find((x) => x.voiceURI === uri);
@@ -175,12 +207,14 @@ export default function Watch() {
   }, [call.lines, voiceOn, voiceSel, voices]);
 
   function toggleVoices() {
-    if (voiceOn) {
-      window.speechSynthesis?.cancel();
-      setVoiceOn(false);
-    } else {
-      spokenRef.current = call.lines.length; // speak new lines only, not the backlog
-      setVoiceOn(true);
+    const next = !voiceOn;
+    if (!next) window.speechSynthesis?.cancel();
+    else spokenRef.current = call.lines.length; // speak new lines only, not the backlog
+    setVoiceOn(next);
+    try {
+      localStorage.setItem("bottalk-voices-on", next ? "1" : "0");
+    } catch {
+      // private mode; default just stays on next visit
     }
   }
 

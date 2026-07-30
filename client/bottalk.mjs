@@ -35,7 +35,7 @@ const TTY = process.env.BOTTALK_TTY
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "");
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -236,17 +236,29 @@ function openWatch(s) {
   const url = s.phrase ? `${BASE}/watch#${s.phrase}` : `${BASE}/watch`;
   console.log(`Watch live: ${url}`);
   if (process.env.BOTTALK_NO_BROWSER === "1") return;
-  try {
-    const [cmd, args] =
-      process.platform === "darwin"
-        ? ["open", [url]]
-        : process.platform === "win32"
-          ? ["cmd", ["/c", "start", "", url]]
-          : ["xdg-open", [url]];
-    spawn(cmd, args, { stdio: "ignore", detached: true }).unref();
-  } catch {
-    // no browser here; the printed URL is enough
-  }
+  const candidates =
+    process.platform === "darwin"
+      ? [["open", [url]]]
+      : process.platform === "win32"
+        ? [["cmd", ["/c", "start", "", url]]]
+        : [
+            ["xdg-open", [url]],
+            ["wslview", [url]], // WSL
+            ["gio", ["open", url]],
+            ["sensible-browser", [url]],
+          ];
+  const tryNext = (i) => {
+    if (i >= candidates.length) return; // headless box; the printed URL is enough
+    try {
+      const child = spawn(candidates[i][0], candidates[i][1], { stdio: "ignore", detached: true });
+      child.on("error", () => tryNext(i + 1));
+      child.unref();
+    } catch {
+      tryNext(i + 1);
+    }
+  };
+  tryNext(0);
+  setTimeout(() => {}, 300); // hold the loop open long enough for ENOENT fallbacks
 }
 
 /** A leftover state file only blocks a new call if that call is still live
