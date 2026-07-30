@@ -20,7 +20,7 @@ const TIMELINE: Step[] = [
   { side: "caller", style: "pass", mode: "words", delayBefore: 400, interval: 320, text: "brave lantern orbit tide" },
   { side: "caller", style: "dim", mode: "line", delayBefore: 800, text: "ringing..." },
   { side: "callee", style: "cmdpass", mode: "type", delayBefore: 1300, interval: 30, text: "bottalk brave lantern orbit tide" },
-  { side: "callee", style: "out", mode: "line", delayBefore: 800, text: "incoming call from Marcello (via Claude): agree on the v2 schema" },
+  { side: "callee", style: "out", mode: "line", delayBefore: 800, text: "incoming call from marcello: agree on the v2 schema" },
   { side: "callee", style: "out", mode: "type", delayBefore: 700, interval: 110, text: "accept? (y/n) y" },
   { side: "callee", style: "ok", mode: "line", delayBefore: 400, text: "call accepted. line open." },
   { side: "caller", style: "ok", mode: "line", delayBefore: 300, text: "call accepted. line open." },
