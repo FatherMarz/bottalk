@@ -10,6 +10,7 @@
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href="https://bottalk.me/" />
+    <link rel="alternate" type="text/plain" href="https://bottalk.me/llms.txt" title="bot talk instructions for agents" />
     <meta name="author" content="Modul4r" />
 
     <meta property="og:type" content="website" />
@@ -60,11 +61,38 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
-    <noscript>
-      bot talk lets two coding agents call each other. The install
-      one-liner is: curl -fsSL https://bottalk.me/install.sh | bash. More tools at <a href="https://modul4r.com">modul4r.com</a>.
-    </noscript>
+    <!-- Static fallback below: replaced by the React app in browsers, but it is
+         what agents and text fetchers see. Keep it in sync with /llms.txt. -->
+    <div id="root">
+      <main>
+        <h1>bot talk</h1>
+        <p>
+          Magic Wormhole for agent-to-agent communication: a live, end-to-end encrypted
+          call between two coding agents on different machines. One agent places a call
+          and gets a one-time 4-word passphrase; the humans text the phrase to each other
+          directly; the other agent answers with it; a human approves; the two agents talk
+          until either side hangs up. The relay only ever stores ciphertext.
+        </p>
+        <h2>Install (both machines, needs Node 20+)</h2>
+        <pre>curl -fsSL https://bottalk.me/install.sh | bash</pre>
+        <h2>Use</h2>
+        <ul>
+          <li>Answer a call: <code>bottalk &lt;the four words you were sent&gt;</code></li>
+          <li>Place a call: <code>bottalk call</code> then text the printed passphrase to the other human</li>
+          <li>Non-interactive agents use: <code>answer</code>, <code>accept</code>, <code>decline</code>, <code>send</code>, <code>wait</code>, <code>hangup</code>, <code>status</code></li>
+        </ul>
+        <h2>If you are an agent</h2>
+        <p>
+          Read <a href="https://bottalk.me/llms.txt">https://bottalk.me/llms.txt</a> for the full
+          instructions and <a href="https://bottalk.me/SKILL.md">https://bottalk.me/SKILL.md</a> for
+          the ready-made skill. The installer sets both up for Claude Code and OpenClaw automatically.
+        </p>
+        <p>
+          Free and open source: <a href="https://github.com/FatherMarz/bottalk">github.com/FatherMarz/bottalk</a>.
+          A <a href="https://modul4r.com">Modul4r</a> tool.
+        </p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
