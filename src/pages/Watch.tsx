@@ -4,6 +4,23 @@ import { derive, open, normalizePhrase, type CallKeys } from "@/lib/callCrypto";
 
 const POLL_MS = 1000;
 
+// Known-good voices per platform, best first: Chrome ships the Google set,
+// Apple has Samantha/Daniel, Edge the Microsoft ones. First match wins;
+// the pickers override. Two distinct voices so the sides sound like two bots.
+const PREFERRED = {
+  caller: ["Google US English", "Samantha", "Aria", "Zira", "Karen", "Ava"],
+  callee: ["Google UK English Male", "Daniel", "Guy", "David", "Rishi", "Alex"],
+};
+
+function pickDefault(pool: SpeechSynthesisVoice[], prefs: string[], avoid?: string): string {
+  for (const p of prefs) {
+    const v = pool.find((v) => v.name.includes(p) && v.voiceURI !== avoid);
+    if (v) return v.voiceURI;
+  }
+  const v = pool.find((v) => v.voiceURI !== avoid) ?? pool[0];
+  return v?.voiceURI ?? "";
+}
+
 type Role = "caller" | "callee";
 type Line =
   | { kind: "msg"; role: Role; text: string }
@@ -116,10 +133,9 @@ export default function Watch() {
       setVoiceSel((sel) => {
         const ok = (uri: string) => pool.some((v) => v.voiceURI === uri);
         if (ok(sel.caller) && ok(sel.callee)) return sel;
-        return {
-          caller: ok(sel.caller) ? sel.caller : pool[0]?.voiceURI ?? "",
-          callee: ok(sel.callee) ? sel.callee : (pool[1] ?? pool[0])?.voiceURI ?? "",
-        };
+        const caller = ok(sel.caller) ? sel.caller : pickDefault(pool, PREFERRED.caller);
+        const callee = ok(sel.callee) ? sel.callee : pickDefault(pool, PREFERRED.callee, caller);
+        return { caller, callee };
       });
     };
     load();
@@ -148,9 +164,9 @@ export default function Watch() {
         const uri = l.role === "caller" ? voiceSel.caller : voiceSel.callee;
         const v = voices.find((x) => x.voiceURI === uri);
         if (v) u.voice = v;
-        u.rate = l.role === "caller" ? 1.03 : 0.97; // tells them apart even on one voice
+        u.rate = l.role === "caller" ? 1.18 : 1.1; // brisk, and split so one shared voice still reads as two bots
       } else {
-        u.rate = 1.1;
+        u.rate = 1.2;
         u.volume = 0.7;
       }
       synth.speak(u);
@@ -274,111 +290,129 @@ export default function Watch() {
 
   const callerLabel = call.callerName ?? "caller";
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      <nav className="fixed inset-x-0 top-0 z-50 h-16 border-b border-border bg-bg/70 backdrop-blur-md">
-        <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6">
-          <Wordmark />
-          {keys && <StatusPill phase={call.phase} />}
-        </div>
-      </nav>
+  const nav = (
+    <nav className="fixed inset-x-0 top-0 z-50 h-16 border-b border-border bg-bg/70 backdrop-blur-md">
+      <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6">
+        <Wordmark />
+        {keys && (
+          <div className="flex items-center gap-4">
+            <span className="hidden text-[13px] text-text-muted sm:block">
+              watching {callerLabel}&apos;s call
+            </span>
+            <StatusPill phase={call.phase} />
+          </div>
+        )}
+      </div>
+    </nav>
+  );
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 pb-24 pt-32">
-        {!keys ? (
-          <>
-            <h1 className="text-[clamp(1.875rem,4vw,2.75rem)] font-semibold leading-[1.15] tracking-[-0.03em] text-text">
-              Watch a call.
-            </h1>
-            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-text-muted">
-              Enter the same four words the call was opened with. The passphrase never leaves this
-              tab: your browser derives the key and decrypts the conversation locally, live.
-            </p>
-            <form
-              className="mt-8 flex flex-col gap-3 sm:flex-row"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (busy === null) void start();
-              }}
-            >
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="brave lantern orbit tide"
-                autoFocus
-                spellCheck={false}
-                autoComplete="off"
-                className="w-full flex-1 rounded-lg border border-border bg-transparent px-4 py-3 font-mono text-[15px] text-text placeholder:text-text-muted/50 focus:border-[#007cf0] focus:outline-none"
+  if (!keys) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        {nav}
+        <main className="mx-auto w-full max-w-3xl flex-1 px-6 pb-24 pt-32">
+          <h1 className="text-[clamp(1.875rem,4vw,2.75rem)] font-semibold leading-[1.15] tracking-[-0.03em] text-text">
+            Watch a call.
+          </h1>
+          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-text-muted">
+            Enter the same four words the call was opened with. The passphrase never leaves this
+            tab: your browser derives the key and decrypts the conversation locally, live.
+          </p>
+          <form
+            className="mt-8 flex flex-col gap-3 sm:flex-row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (busy === null) void start();
+            }}
+          >
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="brave lantern orbit tide"
+              autoFocus
+              spellCheck={false}
+              autoComplete="off"
+              className="w-full flex-1 rounded-lg border border-border bg-transparent px-4 py-3 font-mono text-[15px] text-text placeholder:text-text-muted/50 focus:border-[#007cf0] focus:outline-none"
+            />
+            <button className="pill whitespace-nowrap" disabled={busy !== null} type="submit">
+              {busy === null ? "Watch" : `Deriving keys… ${Math.round(busy * 100)}%`}
+            </button>
+          </form>
+          {error && <p className="mt-4 text-[14px] text-[#ff6b66]">{error}</p>}
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 flex flex-col pt-16">
+      {nav}
+      {typeof window !== "undefined" && "speechSynthesis" in window && (
+        <div className="flex flex-wrap items-center gap-4 border-b border-border px-4 py-2.5 sm:px-6">
+          <button className="pill-ghost pill-sm" onClick={toggleVoices} type="button">
+            {voiceOn ? "Voices: on" : "Voices: off"}
+          </button>
+          {voiceOn && voices.length > 0 && (
+            <>
+              <VoicePick
+                label={callerLabel}
+                voices={voices}
+                value={voiceSel.caller}
+                onChange={(uri) => setVoiceSel((s) => ({ ...s, caller: uri }))}
               />
-              <button className="pill whitespace-nowrap" disabled={busy !== null} type="submit">
-                {busy === null ? "Watch" : `Deriving keys… ${Math.round(busy * 100)}%`}
-              </button>
-            </form>
-            {error && <p className="mt-4 text-[14px] text-[#ff6b66]">{error}</p>}
-          </>
-        ) : (
-          <>
-          {typeof window !== "undefined" && "speechSynthesis" in window && (
-            <div className="mb-3 flex flex-wrap items-center gap-4">
-              <button className="pill-ghost pill-sm" onClick={toggleVoices} type="button">
-                {voiceOn ? "Voices: on" : "Voices: off"}
-              </button>
-              {voiceOn && voices.length > 0 && (
-                <>
-                  <VoicePick
-                    label={callerLabel}
-                    voices={voices}
-                    value={voiceSel.caller}
-                    onChange={(uri) => setVoiceSel((s) => ({ ...s, caller: uri }))}
-                  />
-                  <VoicePick
-                    label="them"
-                    voices={voices}
-                    value={voiceSel.callee}
-                    onChange={(uri) => setVoiceSel((s) => ({ ...s, callee: uri }))}
-                  />
-                </>
-              )}
+              <VoicePick
+                label="them"
+                voices={voices}
+                value={voiceSel.callee}
+                onChange={(uri) => setVoiceSel((s) => ({ ...s, callee: uri }))}
+              />
+            </>
+          )}
+        </div>
+      )}
+      <div ref={scroller} className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-2xl flex-col px-4 pb-10 pt-6 sm:px-6">
+          {call.lines.length === 0 && (
+            <div className="py-24 text-center text-sm text-text-muted/70">
+              {call.phase === "ringing" ? "Ringing. Waiting for pickup…" : "…"}
             </div>
           )}
-          <div className="terminal w-full">
-            <div className="flex h-10 items-center gap-2 border-b border-border px-4">
-              <span className="terminal-dot bg-[#ff5f57]" />
-              <span className="terminal-dot bg-[#febc2e]" />
-              <span className="terminal-dot bg-[#28c840]" />
-              <span className="flex-1 text-center font-mono text-xs text-text-muted">
-                watching: {callerLabel}&apos;s call
-              </span>
-              <span className="w-[46px]" />
-            </div>
-            <div
-              ref={scroller}
-              className="max-h-[65vh] min-h-[420px] overflow-y-auto p-5 font-mono text-[13px] leading-[1.7] md:p-6"
-            >
-              {call.lines.length === 0 && (
-                <div className="text-text-muted/60">
-                  {call.phase === "ringing" ? "Ringing. Waiting for pickup…" : "…"}
+          {call.lines.map((l, i) => {
+            if (l.kind === "sys") {
+              return (
+                <div key={i} className="my-3 text-center text-xs text-text-muted/70">
+                  {l.text}
                 </div>
-              )}
-              {call.lines.map((l, i) =>
-                l.kind === "sys" ? (
-                  <div key={i} className="py-0.5 text-text-muted/60">
-                    {l.text}
-                  </div>
-                ) : (
-                  <div key={i} className="py-0.5 text-text">
-                    <span className={l.role === "caller" ? "text-[#52a8ff]" : "text-[#2dd4bf]"}>
-                      [{l.role === "caller" ? callerLabel : "them"}]
-                    </span>{" "}
-                    {l.text}
-                  </div>
-                ),
-              )}
-            </div>
-          </div>
-          </>
-        )}
-      </main>
-      <SiteFooter />
+              );
+            }
+            const prev = call.lines[i - 1];
+            const firstOfRun = !(prev && prev.kind === "msg" && prev.role === l.role);
+            const right = l.role === "callee";
+            return (
+              <div
+                key={i}
+                className={`flex flex-col ${right ? "items-end" : "items-start"} ${firstOfRun ? "mt-4" : "mt-1"}`}
+              >
+                {firstOfRun && (
+                  <span className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-text-muted">
+                    {right ? "them" : callerLabel}
+                  </span>
+                )}
+                <div
+                  className={`max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${
+                    right
+                      ? "rounded-br-md bg-[#007cf0] text-white"
+                      : "rounded-bl-md border border-border bg-[#161616] text-text"
+                  }`}
+                >
+                  {l.text}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
