@@ -54,6 +54,35 @@ function StatusPill({ phase }: { phase: CallState["phase"] }) {
   );
 }
 
+function VoicePick({
+  label,
+  voices,
+  value,
+  onChange,
+}: {
+  label: string;
+  voices: SpeechSynthesisVoice[];
+  value: string;
+  onChange: (uri: string) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 font-mono text-xs text-text-muted">
+      {label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="max-w-[180px] rounded-md border border-border bg-bg px-2 py-1 font-mono text-xs text-text"
+      >
+        {voices.map((v) => (
+          <option key={v.voiceURI} value={v.voiceURI}>
+            {v.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 /** Watch a call live: the passphrase stays in this tab, the poll is
  *  read-only (no heartbeat), everything decrypts locally. */
 export default function Watch() {
@@ -63,6 +92,81 @@ export default function Watch() {
   const [keys, setKeys] = useState<CallKeys | null>(null);
   const [call, setCall] = useState<CallState>({ phase: "ringing", callerName: null, lines: [] });
   const scroller = useRef<HTMLDivElement>(null);
+
+  // Voices: browser-native TTS, one voice per side. Nothing leaves the tab.
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceSel, setVoiceSel] = useState<{ caller: string; callee: string }>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("bottalk-voices") ?? "null") ?? { caller: "", callee: "" };
+    } catch {
+      return { caller: "", callee: "" };
+    }
+  });
+  const spokenRef = useRef(0);
+
+  useEffect(() => {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    const load = () => {
+      const vs = synth.getVoices();
+      const en = vs.filter((v) => v.lang.startsWith("en"));
+      const pool = en.length >= 2 ? en : vs;
+      setVoices(pool);
+      setVoiceSel((sel) => {
+        const ok = (uri: string) => pool.some((v) => v.voiceURI === uri);
+        if (ok(sel.caller) && ok(sel.callee)) return sel;
+        return {
+          caller: ok(sel.caller) ? sel.caller : pool[0]?.voiceURI ?? "",
+          callee: ok(sel.callee) ? sel.callee : (pool[1] ?? pool[0])?.voiceURI ?? "",
+        };
+      });
+    };
+    load();
+    synth.addEventListener("voiceschanged", load);
+    return () => {
+      synth.removeEventListener("voiceschanged", load);
+      synth.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("bottalk-voices", JSON.stringify(voiceSel));
+    } catch {
+      // private mode etc.; voices just reset next visit
+    }
+  }, [voiceSel]);
+
+  useEffect(() => {
+    const synth = window.speechSynthesis;
+    if (!voiceOn || !synth) return;
+    for (let i = spokenRef.current; i < call.lines.length; i++) {
+      const l = call.lines[i];
+      const u = new SpeechSynthesisUtterance(l.text.replace(/[()]/g, ""));
+      if (l.kind === "msg") {
+        const uri = l.role === "caller" ? voiceSel.caller : voiceSel.callee;
+        const v = voices.find((x) => x.voiceURI === uri);
+        if (v) u.voice = v;
+        u.rate = l.role === "caller" ? 1.03 : 0.97; // tells them apart even on one voice
+      } else {
+        u.rate = 1.1;
+        u.volume = 0.7;
+      }
+      synth.speak(u);
+    }
+    spokenRef.current = call.lines.length;
+  }, [call.lines, voiceOn, voiceSel, voices]);
+
+  function toggleVoices() {
+    if (voiceOn) {
+      window.speechSynthesis?.cancel();
+      setVoiceOn(false);
+    } else {
+      spokenRef.current = call.lines.length; // speak new lines only, not the backlog
+      setVoiceOn(true);
+    }
+  }
 
   async function start() {
     const phrase = normalizePhrase(input);
@@ -212,6 +316,30 @@ export default function Watch() {
             {error && <p className="mt-4 text-[14px] text-[#ff6b66]">{error}</p>}
           </>
         ) : (
+          <>
+          {typeof window !== "undefined" && "speechSynthesis" in window && (
+            <div className="mb-3 flex flex-wrap items-center gap-4">
+              <button className="pill-ghost pill-sm" onClick={toggleVoices} type="button">
+                {voiceOn ? "Voices: on" : "Voices: off"}
+              </button>
+              {voiceOn && voices.length > 0 && (
+                <>
+                  <VoicePick
+                    label={callerLabel}
+                    voices={voices}
+                    value={voiceSel.caller}
+                    onChange={(uri) => setVoiceSel((s) => ({ ...s, caller: uri }))}
+                  />
+                  <VoicePick
+                    label="them"
+                    voices={voices}
+                    value={voiceSel.callee}
+                    onChange={(uri) => setVoiceSel((s) => ({ ...s, callee: uri }))}
+                  />
+                </>
+              )}
+            </div>
+          )}
           <div className="terminal w-full">
             <div className="flex h-10 items-center gap-2 border-b border-border px-4">
               <span className="terminal-dot bg-[#ff5f57]" />
@@ -247,6 +375,7 @@ export default function Watch() {
               )}
             </div>
           </div>
+          </>
         )}
       </main>
       <SiteFooter />
