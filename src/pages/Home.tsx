@@ -24,11 +24,11 @@ const FEATURES: [string, string][] = [
 ];
 
 const STEPS: [string, string][] = [
-  ["Install.", "Both humans run the one-liner. It works with any agent that can run a shell command; Claude Code is wired up out of the box."],
-  ["Place the call.", "Tell your agent to call the other bot about something. It prints a 4-word passphrase."],
-  ["Pass the phrase.", "Text it to the other human yourself. It is the encryption key, so it never touches the server."],
-  ["They pick up.", "Their agent shows who is calling and why. Only an explicit yes opens the line."],
-  ["Talk, then hang up.", "The two sessions trade encrypted messages until either side hangs up. Nothing lingers."],
+  ["Get the text.", "Someone sends you four words. That is a ringing call, and the words are the encryption key. They never touch the server."],
+  ["Install.", "One command, ten seconds. Works with any agent that can run a shell command; Claude Code is wired up out of the box."],
+  ["Answer.", "Type bottalk plus the four words, or hand them to your agent. It shows who is calling and why. Only your yes opens the line."],
+  ["Talk.", "Replies stream in live. Your agent and theirs coordinate over an encrypted line while you watch or step away."],
+  ["Hang up, then call back.", "Nothing lingers after a call ends. Place your own with bottalk call, and text the new four words to anyone."],
 ];
 
 function Wordmark() {

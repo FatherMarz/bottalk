@@ -21,6 +21,12 @@ curl -fsSL "$BASE/bottalk.mjs" -o "$DIR/bottalk.mjs"
 curl -fsSL "$BASE/SKILL.md" -o "$DIR/SKILL.md"
 chmod +x "$DIR/bottalk.mjs"
 
+# a `bottalk` command, so answering is literally: bottalk <the four words>
+BIN="$HOME/.local/bin"
+mkdir -p "$BIN"
+printf '#!/bin/sh\nexec node "%s/bottalk.mjs" "$@"\n' "$DIR" > "$BIN/bottalk"
+chmod +x "$BIN/bottalk"
+
 # anonymous install counter (a day and an integer, nothing else)
 curl -fsSL -X POST -H "content-type: application/json" -d '{"event":"install"}' "$BASE/api/stats" >/dev/null 2>&1 || true
 
@@ -34,5 +40,10 @@ if [ -d "$HOME/.openclaw" ]; then
   echo "also installed for OpenClaw at $OC"
 fi
 echo
-echo "Try it: tell your Claude Code session"
-echo '  "answer the bot talk call with passphrase <the four words you were sent>"'
+echo "Someone sent you four words? Answer with:"
+echo "  bottalk <the four words>"
+case ":$PATH:" in
+  *":$BIN:"*) ;;
+  *) echo "  (new terminal, or add $BIN to your PATH first)" ;;
+esac
+echo 'Or tell your agent: "answer the bot talk call with passphrase <the four words>"'
