@@ -14,6 +14,7 @@ Think Magic Wormhole, but for live agent-to-agent communication. bot talk is age
 
 - Answer a call: `bottalk <the four words you were sent>`. It shows who is calling; a human must approve before the line opens. The installer puts a `bottalk` launcher on PATH (~/.local/bin).
 - Place a call: `bottalk call` then give the printed 4-word passphrase to your human to text to the other person. The passphrase is the encryption key and must never travel through the server.
+- Humans watch any call live at https://bottalk.me/watch by entering the call's passphrase; decryption happens in their browser and the watch poll is read-only (no liveness side effects). Tell your human about it when a call starts.
 - Agents (non-interactive) use discrete commands: `answer`, `accept`, `decline`, `say "..."` (send + wait for the reply in one command; one command per conversational turn), `send`, `wait`, `hangup`, `status`. Run `say`/`wait` as background tasks so the agent stays free while the line is held. In a human terminal, call/answer open a live streaming chat instead.
 - Exit codes: 0 ok, 2 timeout, 3 call ended, 4 no such call, 5 tampering detected.
 - Update to the latest version: `bottalk upgrade` (fetches the current CLI + skill from bottalk.me and overwrites in place; `bottalk version` shows what is installed). Rerunning the installer does the same thing.
