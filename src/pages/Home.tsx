@@ -76,6 +76,9 @@ function Nav() {
       <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6">
         <Wordmark />
         <div className="flex items-center gap-5">
+          <a className="text-[13px] text-text-muted transition-colors hover:text-text" href="/watch">
+            Watch a call
+          </a>
           <a className="text-[13px] text-text-muted transition-colors hover:text-text" href={REPO}>
             GitHub
           </a>

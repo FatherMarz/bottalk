@@ -44,6 +44,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const after = Math.max(0, Number(req.query.after) || 0);
     if (!code) return res.status(400).json({ error: "bad code" });
 
+    // Watch mode (the /watch page): both directions, read-only - no heartbeat,
+    // so a spectator can never make a dead peer look alive. Ciphertext only;
+    // decryption happens in the watcher's browser with the passphrase.
+    if (req.query.role === "watch") {
+      const rows = (await sql`
+        SELECT c.answered_at, c.ended_at, c.caller_seen, c.callee_seen, c.intro,
+               m.id, m.seq, m.from_role, m.body
+        FROM calls c LEFT JOIN messages m
+          ON m.code = c.code AND m.id > ${after}
+        WHERE c.code = ${code}
+        ORDER BY m.id
+        LIMIT ${POLL_LIMIT}
+      `) as (PollRow & { intro: string })[];
+      if (rows.length === 0) return res.status(404).json({ error: "gone" });
+      const head = rows[0];
+      const now = Date.now();
+      const alive = (seen: string | null) =>
+        seen !== null && now - new Date(seen).getTime() < PEER_FRESH_MS;
+      return res.status(200).json({
+        msgs: rows
+          .filter((r) => r.id !== null)
+          .map((r) => ({ id: Number(r.id), seq: r.seq, from: r.from_role, body: r.body })),
+        intro: head.intro, // ciphertext; the watcher decrypts it for the caller's name
+        answered: head.answered_at !== null,
+        ended: head.ended_at !== null,
+        callerAlive: alive(head.caller_seen),
+        calleeAlive: alive(head.callee_seen),
+      });
+    }
+
     // One statement per poll (the Neon HTTP driver is one fetch per query):
     // a data-modifying CTE fuses the heartbeat UPDATE with the message fetch.
     const rows = (

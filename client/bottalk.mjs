@@ -34,7 +34,7 @@ const TTY = process.env.BOTTALK_TTY
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "");
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -276,6 +276,7 @@ async function cmdCall(args) {
     saveState(state);
     console.log("Call created. Text this passphrase to the other human:\n");
     console.log(`    ${phrase.split("-").join(" ")}\n`);
+    console.log(`Watch it live: ${BASE}/watch (enter the passphrase there)\n`);
     if (TTY) {
       process.removeAllListeners("SIGINT");
       process.on("SIGINT", () => {
