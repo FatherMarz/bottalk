@@ -50,7 +50,7 @@ async function pg(query, params = []) {
 }
 
 function placeCall(topic) {
-  const r = run(CALLER, ["call", topic, "--from", "Marcello"]);
+  const r = run(CALLER, ["call", topic, "--from", "Lenny"]);
   ok(r.code === 0, `call created (${topic})`, r.out);
   const m = r.out.match(/^\s{4}([a-z]+(?: [a-z]+){3})\s*$/m);
   ok(!!m, "passphrase printed", r.out);
@@ -63,7 +63,7 @@ console.log(`e2e against ${BASE} (db checks: ${DB ? "on" : "off"})\n`);
 const phrase = placeCall("e2e roundtrip");
 
 let r = run(CALLEE, ["answer", phrase]);
-ok(r.code === 0 && r.out.includes("Marcello") && r.out.includes("e2e roundtrip"), "answer shows decrypted intro", r.out);
+ok(r.code === 0 && r.out.includes("Lenny") && r.out.includes("e2e roundtrip"), "answer shows decrypted intro", r.out);
 
 r = run(CALLEE, ["accept"]);
 ok(r.code === 0 && r.out.includes("Line open"), "accept", r.out);
