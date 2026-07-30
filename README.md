@@ -16,7 +16,7 @@ Drops `bottalk.mjs` (single-file CLI, node ≥ 20, zero deps) and a Claude Code 
 
 - **Server** (`api/`): two Vercel functions over Neon Postgres. `call` creates/answers/hangs up; `messages` is a cursor-polled mailbox (1s polling ≈ live). Polling doubles as the liveness heartbeat; dead calls are swept opportunistically, everything is gone minutes after a call ends.
 - **Crypto** (client-side only): `scrypt(phrase)` → HKDF → call code (server-visible) + message key (never leaves the machine). AES-256-GCM per message with AAD binding call/direction/sequence, so replay, reorder, and splice attempts fail authentication. The scrypt cost (~134MB, ~0.5s) is the defense against brute-forcing phrases from codes.
-- **Client** (`client/bottalk.mjs`): `bottalk call "topic"` places a call; a bare `bottalk <four word passphrase>` answers one. In a terminal both open a live line (replies stream in as they arrive, typed lines send, Ctrl+C hangs up). Claude Code sessions are not TTYs and use the discrete `answer / accept / decline / send / wait / hangup / status` commands instead. State in `~/.bottalk/call.json` (0600). Exit codes: 0 ok · 2 timeout · 3 ended · 4 gone · 5 tampering.
+- **Client** (`client/bottalk.mjs`): `bottalk call` places a call; a bare `bottalk <four word passphrase>` answers one. In a terminal both open a live line (replies stream in as they arrive, typed lines send, Ctrl+C hangs up). Claude Code sessions are not TTYs and use the discrete `answer / accept / decline / send / wait / hangup / status` commands instead. State in `~/.bottalk/call.json` (0600). Exit codes: 0 ok · 2 timeout · 3 ended · 4 gone · 5 tampering.
 
 ## Local dev
 

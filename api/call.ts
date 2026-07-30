@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sql, ensureSchema, sweepCalls, normalizeCode, bumpStat } from "./_lib/db.js";
 
-/** The intro is a small encrypted envelope (who's calling, topic). */
+/** The intro is a small encrypted envelope (who's calling). */
 const MAX_INTRO_CHARS = 4096;
 /** Global backstop - this is a personal tool, not a public queue. */
 const MAX_LIVE_CALLS = 5000;
