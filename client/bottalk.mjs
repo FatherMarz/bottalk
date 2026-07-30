@@ -20,6 +20,7 @@ import {
 import { readFileSync, writeFileSync, mkdirSync, rmSync, chmodSync, existsSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
+import { spawn } from "node:child_process";
 import process from "node:process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -34,7 +35,7 @@ const TTY = process.env.BOTTALK_TTY
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "");
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 
-const VERSION = "1.2.1";
+const VERSION = "1.3.0";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -225,6 +226,29 @@ function openIncoming(s, msg) {
 // ---------------------------------------------------------------------------
 // commands
 
+/** Pop the live view in the local browser the moment a call goes live, so
+ *  the humans see the conversation without doing anything. Best effort;
+ *  opt out with BOTTALK_NO_BROWSER=1. The phrase rides in the URL FRAGMENT:
+ *  fragments never leave the browser, and the page strips it from the
+ *  address bar and history on load. This is the CLI's only spawn, fixed
+ *  commands only, so the no-arbitrary-exec property stays auditable. */
+function openWatch(s) {
+  const url = s.phrase ? `${BASE}/watch#${s.phrase}` : `${BASE}/watch`;
+  console.log(`Watch live: ${url}`);
+  if (process.env.BOTTALK_NO_BROWSER === "1") return;
+  try {
+    const [cmd, args] =
+      process.platform === "darwin"
+        ? ["open", [url]]
+        : process.platform === "win32"
+          ? ["cmd", ["/c", "start", "", url]]
+          : ["xdg-open", [url]];
+    spawn(cmd, args, { stdio: "ignore", detached: true }).unref();
+  } catch {
+    // no browser here; the printed URL is enough
+  }
+}
+
 /** A leftover state file only blocks a new call if that call is still live
  *  on the server; ended/expired leftovers are cleaned up silently. */
 async function stateIsLive(s) {
@@ -265,6 +289,7 @@ async function cmdCall(args) {
       base: BASE,
       code,
       key,
+      phrase,
       role: "caller",
       phase: "ringing",
       cursor: 0,
@@ -276,7 +301,6 @@ async function cmdCall(args) {
     saveState(state);
     console.log("Call created. Text this passphrase to the other human:\n");
     console.log(`    ${phrase.split("-").join(" ")}\n`);
-    console.log(`Watch it live: ${BASE}/watch (enter the passphrase there)\n`);
     if (TTY) {
       process.removeAllListeners("SIGINT");
       process.on("SIGINT", () => {
@@ -319,6 +343,7 @@ async function cmdAnswer(args) {
     base: BASE,
     code,
     key,
+    phrase,
     role: "callee",
     phase: "answered",
     cursor: 0,
@@ -337,6 +362,7 @@ async function cmdAnswer(args) {
       await sendEnvelope(state, { type: "accept" });
       state.phase = "live";
       saveState(state);
+      openWatch(state);
       await chatLoop(state);
       return;
     }
@@ -387,6 +413,7 @@ async function ringUntilAccepted(s) {
       s.phase = "live";
       saveState(s);
       console.log("\nCall accepted.");
+      openWatch(s);
       return;
     }
     if (r.body.ended) {
@@ -479,6 +506,7 @@ async function cmdAccept() {
   s.phase = "live";
   saveState(s);
   console.log("Line open. Use `say \"...\"` (send + wait for reply) or `send`/`wait`.");
+  openWatch(s);
 }
 
 async function cmdDecline(args) {
@@ -528,6 +556,7 @@ async function cmdWait(args) {
         if (payload.type === "accept") {
           s.phase = "live";
           console.log("Call accepted. Line open.");
+          openWatch(s);
           gotContent = true;
         } else if (payload.type === "decline") {
           console.log(`Call declined${payload.reason ? `: ${payload.reason}` : "."}`);

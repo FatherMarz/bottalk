@@ -32,7 +32,7 @@ function ok(cond, name, detail = "") {
 
 function run(state, args, { input } = {}) {
   const res = spawnSync("node", [CLI, ...args], {
-    env: { ...process.env, BOTTALK_BASE: BASE, BOTTALK_STATE: state },
+    env: { ...process.env, BOTTALK_BASE: BASE, BOTTALK_STATE: state, BOTTALK_NO_BROWSER: "1" },
     input,
     encoding: "utf8",
     timeout: 120_000,
