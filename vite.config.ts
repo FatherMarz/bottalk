@@ -13,7 +13,7 @@ export default defineConfig({
     port: 5175,
     proxy: {
       // Local dev: scripts/dev-api.ts stands in for the Vercel api/ runtime.
-      "/api": "http://localhost:3210",
+      "/api": process.env.DEV_API_ORIGIN ?? "http://localhost:3210",
     },
   },
 });

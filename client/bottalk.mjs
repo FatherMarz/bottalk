@@ -34,8 +34,9 @@ const TTY = process.env.BOTTALK_TTY
 
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "");
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
+const WALL_PATH = process.env.BOTTALK_WALL_STATE ?? join(homedir(), ".bottalk", "wall.json");
 
-const VERSION = "1.3.1";
+const VERSION = "1.4.0";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -679,8 +680,208 @@ async function cmdStatus() {
 }
 
 // ---------------------------------------------------------------------------
+// wall: a shared room humans and bots write on together. The link
+// `https://bottalk.me/room#<id>.<key>` is both the address and the secret -
+// the key rides in the fragment, the server stores ciphertext only.
+// Envelope = base64(iv || ct || tag), AAD = "wall-v1|<roomId>|<clientId>",
+// matching src/lib/wallCrypto.ts in the web app byte for byte.
 
-// Interrupting a wait must not kill the call - state is saved after every
+const WALL_PROTO = "wall-v1";
+
+function loadWall() {
+  if (!existsSync(WALL_PATH)) return null;
+  const w = JSON.parse(readFileSync(WALL_PATH, "utf8"));
+  if (w.v !== 1) die(`wall state ${WALL_PATH} is from another bot talk version`);
+  w.key = Buffer.from(w.key, "base64");
+  return w;
+}
+
+function saveWall(w) {
+  mkdirSync(dirname(WALL_PATH), { recursive: true, mode: 0o700 });
+  writeFileSync(WALL_PATH, JSON.stringify({ ...w, key: w.key.toString("base64") }), { mode: 0o600 });
+  chmodSync(WALL_PATH, 0o600);
+}
+
+function wallSeal(key, roomId, clientId, obj) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  cipher.setAAD(Buffer.from(`${WALL_PROTO}|${roomId}|${clientId}`));
+  const ct = Buffer.concat([cipher.update(JSON.stringify(obj), "utf8"), cipher.final()]);
+  return Buffer.concat([iv, ct, cipher.getAuthTag()]).toString("base64");
+}
+
+function wallOpen(key, roomId, clientId, b64) {
+  const raw = Buffer.from(b64, "base64");
+  if (raw.length < 12 + 16 + 1) throw new Error("short envelope");
+  const iv = raw.subarray(0, 12);
+  const tag = raw.subarray(raw.length - 16);
+  const ct = raw.subarray(12, raw.length - 16);
+  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAAD(Buffer.from(`${WALL_PROTO}|${roomId}|${clientId}`));
+  decipher.setAuthTag(tag);
+  return JSON.parse(Buffer.concat([decipher.update(ct), decipher.final()]).toString("utf8"));
+}
+
+function wallId() {
+  return randomBytes(12).toString("hex");
+}
+
+/** Accept `bottalk wall <url>` (bottalk.me/room#<id>.<key>) or a bare
+ *  `#<id>.<key>` fragment. Returns { id, key } or dies. */
+function parseWallRef(input) {
+  const m = /#?([a-f0-9]{24})\.([A-Za-z0-9_-]{43,64})/.exec(String(input ?? ""));
+  if (!m) return null;
+  const key = Buffer.from(m[2].replace(/-/g, "+").replace(/_/g, "/"), "base64");
+  if (key.length !== 32) return null;
+  return { id: m[1], key };
+}
+
+function wallUrl(w) {
+  return `${BASE}/room#${w.id}.${Buffer.from(w.key).toString("base64url")}`;
+}
+
+async function wallApi(payload) {
+  const r = await post("/api/wall", payload);
+  if (r.status === 404) die("That wall is gone (unsaved rooms expire after a week of quiet).", 4);
+  if (r.status !== 200) die(`Wall request failed (${r.status}).`);
+  return r.body;
+}
+
+async function wallPost(w, text, author) {
+  const clientId = randomBytes(16).toString("hex");
+  await wallApi({
+    action: "post",
+    id: w.id,
+    notes: [{ client_id: clientId, ct: wallSeal(w.key, w.id, clientId, { text, author, ts: Date.now() }) }],
+  });
+}
+
+async function wallFetch(w) {
+  const body = await wallApi({ action: "fetch", id: w.id });
+  const out = [];
+  for (const n of body.notes ?? []) {
+    if (n.ct === null) continue; // deleted
+    try {
+      const obj = wallOpen(w.key, w.id, n.client_id, n.ct);
+      out.push({ clientId: n.client_id, ...obj });
+    } catch {
+      die("TAMPERING SUSPECTED: a wall note failed decryption. Do not trust this wall.", 5);
+    }
+  }
+  return { name: body.name ?? null, notes: out };
+}
+
+async function cmdWall(args) {
+  const sub = args.shift() ?? "";
+
+  if (sub === "new") {
+    const author = flag(args, "--from") ?? userInfo().username;
+    const id = wallId();
+    await post("/api/wall", { action: "create", id });
+    const w = { v: 1, id, key: randomBytes(32), author };
+    saveWall(w);
+    console.log(`Wall created. Open it (or send the link to whoever works with you):\n`);
+    console.log(`    ${wallUrl(w)}\n`);
+    console.log(`Bots write on it with: bottalk wall post "what I'm doing"`);
+    return;
+  }
+
+  if (sub === "post" || sub === "note") {
+    let text = args.join(" ");
+    if (text === "-") {
+      const chunks = [];
+      for await (const c of process.stdin) chunks.push(c);
+      text = Buffer.concat(chunks).toString("utf8");
+    }
+    if (!text.trim()) die('Usage: wall post "<text>"   (or `wall post -` to read stdin)');
+    const w = loadWall();
+    if (!w) die("No wall open. `wall new` to start one, or `wall <link>` to join one.");
+    await wallPost(w, text.trim(), w.author ?? userInfo().username);
+    console.log("On the wall.");
+    return;
+  }
+
+  if (sub === "ls") {
+    const w = loadWall();
+    if (!w) die("No wall open. `wall <link>` to join one.");
+    const { name, notes } = await wallFetch(w);
+    if (name) console.log(`[${name}]`);
+    if (notes.length === 0) console.log("(the wall is empty)");
+    for (const n of notes) console.log(`[${n.author ?? "?"}] ${n.text}`);
+    return;
+  }
+
+  if (sub === "rm") {
+    const w = loadWall();
+    if (!w) die("No wall open.");
+    const { notes } = await wallFetch(w);
+    const needle = args.join(" ").trim();
+    const hit = notes.find((n) => n.clientId.startsWith(needle) || n.text.includes(needle));
+    if (!hit) die(`No note matches "${needle}". Notes: ` + notes.map((n) => JSON.stringify(n.text)).join(" | "));
+    await wallApi({ action: "delete", id: w.id, client_id: hit.clientId });
+    console.log("Removed.");
+    return;
+  }
+
+  if (sub === "save") {
+    const name = args.join(" ").trim();
+    if (!name) die("Usage: wall save <project name>");
+    const w = loadWall();
+    if (!w) die("No wall open.");
+    await wallApi({ action: "save", id: w.id, name });
+    console.log(`Saved as project "${name}". The room no longer expires.`);
+    return;
+  }
+
+  if (sub === "link") {
+    const w = loadWall();
+    if (!w) die("No wall open.");
+    console.log(wallUrl(w));
+    return;
+  }
+
+  if (sub === "projects") {
+    const r = await api("/api/walls");
+    const walls = r.body?.walls ?? [];
+    if (walls.length === 0) {
+      console.log("No saved projects yet.");
+      return;
+    }
+    const mine = loadWall();
+    for (const p of walls) {
+      const mark = mine && mine.id === p.id ? "  <- open" : "";
+      console.log(`${p.name}   (saved ${String(p.savedAt).slice(0, 10)})${mark}`);
+    }
+    return;
+  }
+
+  // `bottalk wall <link>` joins (or switches to) a room.
+  const ref = parseWallRef(sub);
+  if (ref) {
+    saveWall({ v: 1, id: ref.id, key: ref.key, author: userInfo().username });
+    const w = loadWall();
+    console.log(`Wall open: ${wallUrl(w)}`);
+    const { name, notes } = await wallFetch(w);
+    if (name) console.log(`project: ${name}`);
+    if (notes.length === 0) console.log("(the wall is empty)");
+    for (const n of notes) console.log(`[${n.author ?? "?"}] ${n.text}`);
+    return;
+  }
+
+  console.error(`Usage: bottalk wall <subcommand>
+
+  wall new [--from "<who>"]     start a room, prints the link
+  wall <link>                   join a room from its bottalk.me/room#... link
+  wall post "<text>"            write a note ("-" reads stdin)
+  wall ls                       read the wall
+  wall rm <text-or-id>          remove a note
+  wall save <project-name>      keep the room (otherwise it expires in a week)
+  wall link                     print the room link again
+  wall projects                 list saved projects`);
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
 // batch and the server sweep is the backstop, so just leave quietly.
 process.on("SIGINT", () => process.exit(130));
 process.on("SIGTERM", () => process.exit(143));
@@ -696,6 +897,7 @@ const commands = {
   wait: cmdWait,
   hangup: cmdHangup,
   status: cmdStatus,
+  wall: cmdWall,
   upgrade: cmdUpgrade,
   version: async () => console.log(VERSION),
   "--version": async () => console.log(VERSION),
@@ -713,6 +915,7 @@ Usage: bottalk.mjs <command>
   call [--from "<who>"]                  place a call, prints the passphrase
   hangup                                 end the call
   status                                 where things stand
+  wall new | post | ls | save | projects  shared wall humans + bots write on
   upgrade                                fetch the latest CLI + skill from ${BASE}
 
 In a terminal, call and answer open a live line: replies stream in, typed
