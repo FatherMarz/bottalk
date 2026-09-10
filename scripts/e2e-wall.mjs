@@ -71,9 +71,9 @@ async function post(payload) {
 }
 
 // --- create + CLI/web interop ---
-const newOut = await cli(["wall", "new", "--from", "claude"]);
+const newOut = await cli(["chat", "new", "--from", "claude"]);
 const link = /http\S+/.exec(newOut.stdout)?.[0];
-check("wall new prints a link", Boolean(link), link ?? newOut.stderr);
+check("chat new prints a link", Boolean(link), link ?? newOut.stderr);
 
 const frag = link.split("#")[1];
 const [roomId, keyB64] = frag.split(".");
@@ -83,11 +83,11 @@ const webKey = await webImport(Buffer.from(keyB64, "base64"));
 const webNoteId = crypto.randomUUID();
 const sealed = await webSeal(webKey, roomId, webNoteId, JSON.stringify({ text: "from the browser", author: "marcello", ts: 1 }));
 await post({ action: "post", id: roomId, notes: [{ client_id: webNoteId, ct: sealed }] });
-const ls1 = await cli(["wall", "ls"]);
+const ls1 = await cli(["chat", "ls"]);
 check("web note visible to CLI", ls1.stdout.includes("from the browser"), JSON.stringify(ls1.stdout));
 
 // CLI writes; the web client must read it.
-await cli(["wall", "post", "from the bot"]);
+await cli(["chat", "post", "from the bot"]);
 const fetched = await post({ action: "fetch", id: roomId });
 const botNote = (fetched.body.notes ?? []).find((n) => n.ct !== null && n.client_id !== webNoteId);
 let botText = null;
@@ -99,7 +99,7 @@ try {
 check("CLI note decrypts in web format", botText === "from the bot", String(botText));
 
 // Unicode round-trip both ways.
-await cli(["wall", "post", "ünïcode ✓ 🚀"]);
+await cli(["chat", "post", "ünïcode ✓ 🚀"]);
 const fetched2 = await post({ action: "fetch", id: roomId });
 const uni = [];
 for (const n of fetched2.body.notes ?? []) {
@@ -115,7 +115,7 @@ const tamperRes = await post({
   notes: [{ client_id: "deadbeefdeadbeefdeadbeef", ct: "AAAA" + botNote.ct.slice(4) }],
 });
 check("tampered note accepted for storage", tamperRes.status === 200, JSON.stringify(tamperRes)); // server stores ciphertext blindly
-const tamperLs = await cli(["wall", "ls"]);
+const tamperLs = await cli(["chat", "ls"]);
 check("CLI refuses a tampered wall (exit 5)", tamperLs.code === 5, `exit ${tamperLs.code}`);
 
 // Wrong key: an unrelated room's key must fail to decrypt this wall.
@@ -139,7 +139,7 @@ function wrongBodyNote(body) {
 check("wrong key cannot read notes", wrongFailed);
 
 // Save + projects list.
-await cli(["wall", "save", "e2e-wall-project"]);
+await cli(["chat", "save", "e2e-wall-project"]);
 const wallsRes = await fetch(`${BASE}/api/walls`);
 const wallsBody = await wallsRes.json();
 check("saved wall appears in /api/walls", (wallsBody.walls ?? []).some((w) => w.name === "e2e-wall-project" || w.name === "e2e-wall-project") || (wallsBody.walls ?? []).length >= 1);
@@ -148,9 +148,13 @@ check("saved wall appears in /api/walls", (wallsBody.walls ?? []).some((w) => w.
 await post({ action: "delete", id: roomId, client_id: "deadbeefdeadbeefdeadbeef" });
 
 // Delete propagation: CLI rm then web fetch lacks it.
-const rmOut = await cli(["wall", "rm", "ünïcode"]);
+const rmOut = await cli(["chat", "rm", "ünïcode"]);
 const afterRm = await post({ action: "fetch", id: roomId });
 check("wall rm removes a note", rmOut.code === 0 && !JSON.stringify(afterRm.body.notes).includes("\u00fcn\u00efcode"), `exit ${rmOut.code} out=${JSON.stringify(rmOut.stdout)} err=${JSON.stringify(rmOut.stderr)}`);
+
+// The `wall` alias still reaches the same command (clean room by now).
+const aliasLs = await cli(["wall", "ls"]);
+check("`wall` alias still works", aliasLs.code === 0 && aliasLs.stdout.includes("e2e-wall-project"), `exit ${aliasLs.code} out=${JSON.stringify(aliasLs.stdout)} err=${JSON.stringify(aliasLs.stderr)}`);
 
 // Unknown room is a clean 404.
 const missing = await post({ action: "fetch", id: "000000000000000000000000" });
