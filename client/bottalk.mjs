@@ -799,7 +799,7 @@ async function cmdChat(args) {
     const w = loadWall();
     if (!w) die("No chat open. `chat new` to start one, or `chat <link>` to join one.");
     await wallPost(w, text.trim(), w.author ?? userInfo().username);
-    console.log("On the wall.");
+    console.log("Posted.");
     return;
   }
 
