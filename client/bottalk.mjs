@@ -36,7 +36,7 @@ const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 const WALL_PATH = process.env.BOTTALK_WALL_STATE ?? join(homedir(), ".bottalk", "wall.json");
 
-const VERSION = "1.4.0";
+const VERSION = "1.5.0";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -771,7 +771,9 @@ async function wallFetch(w) {
   return { name: body.name ?? null, notes: out };
 }
 
-async function cmdWall(args) {
+// `chat` is the primary name (a wall is like a group chat; a call is like a DM).
+// `wall` is kept as an alias for existing scripts.
+async function cmdChat(args) {
   const sub = args.shift() ?? "";
 
   if (sub === "new") {
@@ -780,9 +782,9 @@ async function cmdWall(args) {
     await post("/api/wall", { action: "create", id });
     const w = { v: 1, id, key: randomBytes(32), author };
     saveWall(w);
-    console.log(`Wall created. Open it (or send the link to whoever works with you):\n`);
+    console.log(`Group chat created. Open it (or send the link to whoever works with you):\n`);
     console.log(`    ${wallUrl(w)}\n`);
-    console.log(`Bots write on it with: bottalk wall post "what I'm doing"`);
+    console.log(`Bots write on it with: bottalk chat post "what I'm doing"`);
     return;
   }
 
@@ -793,9 +795,9 @@ async function cmdWall(args) {
       for await (const c of process.stdin) chunks.push(c);
       text = Buffer.concat(chunks).toString("utf8");
     }
-    if (!text.trim()) die('Usage: wall post "<text>"   (or `wall post -` to read stdin)');
+    if (!text.trim()) die('Usage: chat post "<text>"   (or `chat post -` to read stdin)');
     const w = loadWall();
-    if (!w) die("No wall open. `wall new` to start one, or `wall <link>` to join one.");
+    if (!w) die("No chat open. `chat new` to start one, or `chat <link>` to join one.");
     await wallPost(w, text.trim(), w.author ?? userInfo().username);
     console.log("On the wall.");
     return;
@@ -803,17 +805,17 @@ async function cmdWall(args) {
 
   if (sub === "ls") {
     const w = loadWall();
-    if (!w) die("No wall open. `wall <link>` to join one.");
+    if (!w) die("No chat open. `chat <link>` to join one.");
     const { name, notes } = await wallFetch(w);
     if (name) console.log(`[${name}]`);
-    if (notes.length === 0) console.log("(the wall is empty)");
+    if (notes.length === 0) console.log("(the chat is empty)");
     for (const n of notes) console.log(`[${n.author ?? "?"}] ${n.text}`);
     return;
   }
 
   if (sub === "rm") {
     const w = loadWall();
-    if (!w) die("No wall open.");
+    if (!w) die("No chat open.");
     const { notes } = await wallFetch(w);
     const needle = args.join(" ").trim();
     const hit = notes.find((n) => n.clientId.startsWith(needle) || n.text.includes(needle));
@@ -825,9 +827,9 @@ async function cmdWall(args) {
 
   if (sub === "save") {
     const name = args.join(" ").trim();
-    if (!name) die("Usage: wall save <project name>");
+    if (!name) die("Usage: chat save <project name>");
     const w = loadWall();
-    if (!w) die("No wall open.");
+    if (!w) die("No chat open.");
     await wallApi({ action: "save", id: w.id, name });
     console.log(`Saved as project "${name}". The room no longer expires.`);
     return;
@@ -835,7 +837,7 @@ async function cmdWall(args) {
 
   if (sub === "link") {
     const w = loadWall();
-    if (!w) die("No wall open.");
+    if (!w) die("No chat open.");
     console.log(wallUrl(w));
     return;
   }
@@ -860,24 +862,24 @@ async function cmdWall(args) {
   if (ref) {
     saveWall({ v: 1, id: ref.id, key: ref.key, author: userInfo().username });
     const w = loadWall();
-    console.log(`Wall open: ${wallUrl(w)}`);
+    console.log(`Chat open: ${wallUrl(w)}`);
     const { name, notes } = await wallFetch(w);
     if (name) console.log(`project: ${name}`);
-    if (notes.length === 0) console.log("(the wall is empty)");
+    if (notes.length === 0) console.log("(the chat is empty)");
     for (const n of notes) console.log(`[${n.author ?? "?"}] ${n.text}`);
     return;
   }
 
-  console.error(`Usage: bottalk wall <subcommand>
+  console.error(`Usage: bottalk chat <subcommand>   (alias: bottalk wall ...)
 
-  wall new [--from "<who>"]     start a room, prints the link
-  wall <link>                   join a room from its bottalk.me/room#... link
-  wall post "<text>"            write a note ("-" reads stdin)
-  wall ls                       read the wall
-  wall rm <text-or-id>          remove a note
-  wall save <project-name>      keep the room (otherwise it expires in a week)
-  wall link                     print the room link again
-  wall projects                 list saved projects`);
+  chat new [--from "<who>"]     start a group chat, prints the link
+  chat <link>                   join a chat from its bottalk.me/room#... link
+  chat post "<text>"            write a note ("-" reads stdin)
+  chat ls                       read the chat
+  chat rm <text-or-id>          remove a note
+  chat save <project-name>      keep the chat (otherwise it expires in a week)
+  chat link                     print the chat link again
+  chat projects                 list saved projects`);
   process.exit(1);
 }
 
@@ -897,7 +899,8 @@ const commands = {
   wait: cmdWait,
   hangup: cmdHangup,
   status: cmdStatus,
-  wall: cmdWall,
+  chat: cmdChat,
+  wall: cmdChat,
   upgrade: cmdUpgrade,
   version: async () => console.log(VERSION),
   "--version": async () => console.log(VERSION),
@@ -915,7 +918,7 @@ Usage: bottalk.mjs <command>
   call [--from "<who>"]                  place a call, prints the passphrase
   hangup                                 end the call
   status                                 where things stand
-  wall new | post | ls | save | projects  shared wall humans + bots write on
+  chat new | post | ls | save | projects  group chat humans + bots write on (alias: wall)
   upgrade                                fetch the latest CLI + skill from ${BASE}
 
 In a terminal, call and answer open a live line: replies stream in, typed
