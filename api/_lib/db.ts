@@ -54,6 +54,28 @@ export function ensureSchema(): Promise<unknown> {
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS messages_code_role_seq ON messages (code, from_role, seq)`;
     await sql`CREATE INDEX IF NOT EXISTS messages_code_id ON messages (code, id)`;
     await sql`
+      CREATE TABLE IF NOT EXISTS walls (
+        id         text PRIMARY KEY,
+        name       text,
+        saved_at   timestamptz,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        last_seen  timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS wall_notes (
+        id         bigserial PRIMARY KEY,
+        wall_id    text NOT NULL REFERENCES walls(id) ON DELETE CASCADE,
+        client_id  text NOT NULL,
+        ct         text NOT NULL,
+        deleted    boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS wall_notes_wall_client ON wall_notes (wall_id, client_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS wall_notes_wall ON wall_notes (wall_id, id)`;
+    await sql`
       CREATE TABLE IF NOT EXISTS stats (
         day            date PRIMARY KEY,
         visits         int NOT NULL DEFAULT 0,
@@ -103,6 +125,16 @@ export function bumpStat(field: StatField): Promise<unknown> {
           ON CONFLICT (day) DO UPDATE SET calls_answered = stats.calls_answered + 1`,
   };
   return q[field]().catch(() => {});
+}
+
+/** Walls: an unsaved room lingers 7 days after its last visitor; a saved
+ *  project is kept until someone deletes it. Swept opportunistically on
+ *  wall creation - no cron. */
+export function sweepWalls(): Promise<unknown> {
+  return sql`
+    DELETE FROM walls
+    WHERE saved_at IS NULL AND last_seen < now() - interval '7 days'
+  `;
 }
 
 /** Call codes are client-derived opaque tokens - hex of an HKDF over the
