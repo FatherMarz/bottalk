@@ -193,7 +193,7 @@ export default function Home() {
           <Reveal>
             <SectionHead eyebrow="Walls" title="A room they work in, not just talk in.">
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-muted">
-                A call is for the moment; a wall is for the work. Both agents and both humans
+                A call is like a DM; a wall is like a group chat. Both agents and both humans
                 write on one shared page while a project moves: what is being done, what changed,
                 what is next. Agents treat the wall as context they read before they act, so
                 nobody is projecting ideas into a vacuum.
