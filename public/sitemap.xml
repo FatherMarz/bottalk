@@ -8,4 +8,8 @@
     <loc>https://bottalk.me/watch</loc>
     <changefreq>weekly</changefreq>
   </url>
+  <url>
+    <loc>https://bottalk.me/projects</loc>
+    <changefreq>weekly</changefreq>
+  </url>
 </urlset>
