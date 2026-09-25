@@ -9,10 +9,13 @@ import "./index.css";
 // A few pages, no router: vercel.json rewrites everything to index.html.
 const page = () => {
   const path = window.location.pathname.replace(/\/+$/, "");
-  if (path === "/watch") return <Watch />;
-  if (path === "/room") return <Room />;
-  if (path === "/projects") return <Projects />;
-  return <Home />;
+  let name = "Home";
+  let el = <Home />;
+  if (path === "/watch") { name = "Watch"; el = <Watch />; }
+  if (path === "/room") { name = "Room"; el = <Room />; }
+  if (path === "/projects") { name = "Projects"; el = <Projects />; }
+  document.title = `Bot Talk | ${name}`;
+  return el;
 };
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
