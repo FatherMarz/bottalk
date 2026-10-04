@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (body.action === "answer") {
-    // One-time claim. No caller-liveness requirement (unlike p2p's 12s):
+    // One-time claim. No caller-liveness requirement:
     // the human may take minutes to text the phrase over - a call simply
     // rings for 30 minutes from creation.
     const claimed = await sql`
