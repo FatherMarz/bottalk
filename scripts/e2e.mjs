@@ -3,7 +3,7 @@
 //
 // Local:  docker pg on :5544 + `DEV_PG=1 DATABASE_URL=... npx tsx scripts/dev-api.ts`
 //         then: BOTTALK_BASE=http://localhost:3210 DATABASE_URL=... node scripts/e2e.mjs
-// Prod:   BOTTALK_BASE=https://bottalk.modul4r.com node scripts/e2e.mjs
+// Prod:   BOTTALK_BASE=https://bottalk.me node scripts/e2e.mjs
 //         (DB-tamper + ciphertext checks need DATABASE_URL and are skipped without it)
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, existsSync, rmSync } from "node:fs";

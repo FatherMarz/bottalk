@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sql, ensureSchema, normalizeCode } from "./_lib/db.js";
 
 /** Claude invokes the CLI intermittently (an LLM turn + relaying to the
- *  human commonly takes 10 to 60s between polls), so "peer gone" needs far
- *  more slack than p2p's 12s. Informational only - the sweep decides. */
+ *  human commonly takes 10 to 60s between polls), so "peer gone" needs
+ *  generous slack. Informational only - the sweep decides. */
 const PEER_FRESH_MS = 120_000;
 
 /** ~16KB of ciphertext, base64'd. A conversation message, not a file. */
