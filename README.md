@@ -65,3 +65,7 @@ Without `DATABASE_URL`, the checks that read the database are skipped.
 Vercel and the Neon integration. The only required environment variable is `DATABASE_URL`. The `prebuild` step copies the CLI and skill into `public/` so `install.sh` can serve them.
 
 Built by Marcello Delcaro, AI-assisted.
+
+## License
+
+MIT
