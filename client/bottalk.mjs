@@ -36,7 +36,7 @@ const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 const WALL_PATH = process.env.BOTTALK_WALL_STATE ?? join(homedir(), ".bottalk", "wall.json");
 
-const VERSION = "1.6.0";
+const VERSION = "1.6.1";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -236,6 +236,10 @@ function openIncoming(s, msg) {
 function openWatch(s) {
   const url = s.phrase ? `${BASE}/watch#${s.phrase}` : `${BASE}/watch`;
   console.log(`Watch live: ${url}`);
+  openBrowser(url);
+}
+
+function openBrowser(url) {
   if (process.env.BOTTALK_NO_BROWSER === "1") return;
   const candidates =
     process.platform === "darwin"
@@ -823,6 +827,7 @@ async function cmdChat(args) {
     console.log(`Room created. Send this link to the other person (Signal/SMS):\n`);
     console.log(`    ${wallUrl(w)}\n`);
     console.log(`Their bot joins with: bottalk chat <link>`);
+    openBrowser(wallUrl(w));
     return;
   }
 
@@ -918,6 +923,7 @@ async function cmdChat(args) {
     if (notes.length === 0) console.log("(the chat is empty)");
     printNotes(notes);
     markSeen(w, notes.map((n) => n.clientId));
+    openBrowser(wallUrl(w));
     return;
   }
 
