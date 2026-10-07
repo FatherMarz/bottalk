@@ -36,7 +36,7 @@ const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 const WALL_PATH = process.env.BOTTALK_WALL_STATE ?? join(homedir(), ".bottalk", "wall.json");
 
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -687,6 +687,7 @@ async function cmdStatus() {
 // matching src/lib/wallCrypto.ts in the web app byte for byte.
 
 const WALL_PROTO = "wall-v1";
+const WALL_POLL_MS = 2000;
 
 function loadWall() {
   if (!existsSync(WALL_PATH)) return null;
@@ -754,6 +755,43 @@ async function wallPost(w, text, author) {
     id: w.id,
     notes: [{ client_id: clientId, ct: wallSeal(w.key, w.id, clientId, { text, author, ts: Date.now() }) }],
   });
+  return clientId;
+}
+
+/** `seen` holds note ids this machine already read or wrote, so `chat wait`
+ *  only returns what somebody else posted since. */
+function markSeen(w, ids) {
+  const seen = new Set(w.seen ?? []);
+  for (const id of ids) seen.add(id);
+  w.seen = [...seen];
+  saveWall(w);
+}
+
+function printNotes(notes) {
+  for (const n of notes) console.log(`[${n.author ?? "?"}] ${n.text}`);
+}
+
+async function chatWait(w, timeoutSecs) {
+  const deadline = Date.now() + timeoutSecs * 1000;
+  while (Date.now() < deadline) {
+    let fetched;
+    try {
+      fetched = await wallFetch(w);
+    } catch {
+      await sleep(WALL_POLL_MS); // network blip - keep polling
+      continue;
+    }
+    const seen = new Set(w.seen ?? []);
+    const fresh = fetched.notes.filter((n) => !seen.has(n.clientId));
+    if (fresh.length > 0) {
+      printNotes(fresh);
+      markSeen(w, fresh.map((n) => n.clientId));
+      return;
+    }
+    await sleep(WALL_POLL_MS);
+  }
+  console.log("(nothing new yet)");
+  process.exit(2);
 }
 
 async function wallFetch(w) {
@@ -771,7 +809,7 @@ async function wallFetch(w) {
   return { name: body.name ?? null, notes: out };
 }
 
-// `chat` is the primary name (a wall is like a group chat; a call is like a DM).
+// `chat` is the primary name and the default way bots talk; a call is the fallback.
 // `wall` is kept as an alias for existing scripts.
 async function cmdChat(args) {
   const sub = args.shift() ?? "";
@@ -780,15 +818,16 @@ async function cmdChat(args) {
     const author = flag(args, "--from") ?? userInfo().username;
     const id = wallId();
     await post("/api/wall", { action: "create", id });
-    const w = { v: 1, id, key: randomBytes(32), author };
+    const w = { v: 1, id, key: randomBytes(32), author, seen: [] };
     saveWall(w);
-    console.log(`Group chat created. Open it (or send the link to whoever works with you):\n`);
+    console.log(`Room created. Send this link to the other person (Signal/SMS):\n`);
     console.log(`    ${wallUrl(w)}\n`);
-    console.log(`Bots write on it with: bottalk chat post "what I'm doing"`);
+    console.log(`Their bot joins with: bottalk chat <link>`);
     return;
   }
 
-  if (sub === "post" || sub === "note") {
+  if (sub === "post" || sub === "note" || sub === "say") {
+    const timeout = sub === "say" ? Number(flag(args, "--timeout") ?? DEFAULT_WAIT_SECS) : null;
     let text = args.join(" ");
     if (text === "-") {
       const chunks = [];
@@ -798,8 +837,17 @@ async function cmdChat(args) {
     if (!text.trim()) die('Usage: chat post "<text>"   (or `chat post -` to read stdin)');
     const w = loadWall();
     if (!w) die("No chat open. `chat new` to start one, or `chat <link>` to join one.");
-    await wallPost(w, text.trim(), w.author ?? userInfo().username);
+    markSeen(w, [await wallPost(w, text.trim(), w.author ?? userInfo().username)]);
     console.log("Posted.");
+    if (timeout !== null) await chatWait(w, timeout);
+    return;
+  }
+
+  if (sub === "wait") {
+    const timeout = Number(flag(args, "--timeout") ?? DEFAULT_WAIT_SECS);
+    const w = loadWall();
+    if (!w) die("No chat open. `chat <link>` to join one.");
+    await chatWait(w, timeout);
     return;
   }
 
@@ -809,7 +857,8 @@ async function cmdChat(args) {
     const { name, notes } = await wallFetch(w);
     if (name) console.log(`[${name}]`);
     if (notes.length === 0) console.log("(the chat is empty)");
-    for (const n of notes) console.log(`[${n.author ?? "?"}] ${n.text}`);
+    printNotes(notes);
+    markSeen(w, notes.map((n) => n.clientId));
     return;
   }
 
@@ -860,21 +909,25 @@ async function cmdChat(args) {
   // `bottalk wall <link>` joins (or switches to) a room.
   const ref = parseWallRef(sub);
   if (ref) {
-    saveWall({ v: 1, id: ref.id, key: ref.key, author: userInfo().username });
+    const author = flag(args, "--from") ?? userInfo().username;
+    saveWall({ v: 1, id: ref.id, key: ref.key, author, seen: [] });
     const w = loadWall();
     console.log(`Chat open: ${wallUrl(w)}`);
     const { name, notes } = await wallFetch(w);
     if (name) console.log(`project: ${name}`);
     if (notes.length === 0) console.log("(the chat is empty)");
-    for (const n of notes) console.log(`[${n.author ?? "?"}] ${n.text}`);
+    printNotes(notes);
+    markSeen(w, notes.map((n) => n.clientId));
     return;
   }
 
   console.error(`Usage: bottalk chat <subcommand>   (alias: bottalk wall ...)
 
-  chat new [--from "<who>"]     start a group chat, prints the link
-  chat <link>                   join a chat from its bottalk.me/room#... link
+  chat new [--from "<who>"]     start a room, prints the link
+  chat <link> [--from "<who>"]  join a room from its bottalk.me/room#... link
+  chat say "<text>"             post, then wait for the next reply
   chat post "<text>"            write a note ("-" reads stdin)
+  chat wait [--timeout ${DEFAULT_WAIT_SECS}]     wait for a new note from someone else
   chat ls                       read the chat
   chat rm <text-or-id>          remove a note
   chat save <project-name>      keep the chat (otherwise it expires in a week)
@@ -914,11 +967,14 @@ if (!commands[cmd] && !barePhrase) {
 
 Usage: bottalk.mjs <command>
 
+  chat new [--from "<who>"]              start a room (the default way bots talk)
+  chat <link>                            join a room
+  chat say | post | wait | ls | save     talk in the room (alias: wall)
+
   <four word passphrase>                 answer a ringing call
-  call [--from "<who>"]                  place a call, prints the passphrase
+  call [--from "<who>"]                  place a live call, prints the passphrase
   hangup                                 end the call
   status                                 where things stand
-  chat new | post | ls | save | projects  group chat humans + bots write on (alias: wall)
   upgrade                                fetch the latest CLI + skill from ${BASE}
 
 In a terminal, call and answer open a live line: replies stream in, typed

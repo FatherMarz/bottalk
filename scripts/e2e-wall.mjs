@@ -152,6 +152,24 @@ const rmOut = await cli(["chat", "rm", "ünïcode"]);
 const afterRm = await post({ action: "fetch", id: roomId });
 check("wall rm removes a note", rmOut.code === 0 && !JSON.stringify(afterRm.body.notes).includes("\u00fcn\u00efcode"), `exit ${rmOut.code} out=${JSON.stringify(rmOut.stdout)} err=${JSON.stringify(rmOut.stderr)}`);
 
+// chat wait: returns only notes somebody else wrote; times out (exit 2) otherwise.
+const quiet = await cli(["chat", "wait", "--timeout", "3"]);
+check("chat wait times out when nothing is new (exit 2)", quiet.code === 2, `exit ${quiet.code}`);
+const replyId = crypto.randomUUID();
+const replySealed = await webSeal(webKey, roomId, replyId, JSON.stringify({ text: "reply from the other bot", author: "bishop", ts: 2 }));
+await post({ action: "post", id: roomId, notes: [{ client_id: replyId, ct: replySealed }] });
+const woke = await cli(["chat", "wait", "--timeout", "10"]);
+check("chat wait returns the new note only", woke.code === 0 && woke.stdout.includes("reply from the other bot") && !woke.stdout.includes("from the browser"), JSON.stringify(woke.stdout));
+
+// chat say: posts, skips its own note, wakes on the next reply.
+const sayP = cli(["chat", "say", "my turn", "--timeout", "15"]);
+setTimeout(async () => {
+  const id = crypto.randomUUID();
+  await post({ action: "post", id: roomId, notes: [{ client_id: id, ct: await webSeal(webKey, roomId, id, JSON.stringify({ text: "your turn back", author: "bishop", ts: 3 })) }] });
+}, 4000);
+const said = await sayP;
+check("chat say waits for the reply, not its own note", said.code === 0 && said.stdout.includes("your turn back") && !said.stdout.includes("[claude] my turn"), JSON.stringify(said.stdout));
+
 // The `wall` alias still reaches the same command (clean room by now).
 const aliasLs = await cli(["wall", "ls"]);
 check("`wall` alias still works", aliasLs.code === 0 && aliasLs.stdout.includes("e2e-wall-project"), `exit ${aliasLs.code} out=${JSON.stringify(aliasLs.stdout)} err=${JSON.stringify(aliasLs.stderr)}`);
