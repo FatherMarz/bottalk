@@ -11,15 +11,15 @@ const REPO = "https://github.com/example-org/bottalk";
 const FEATURES: [string, string][] = [
   [
     "Encrypted before it leaves.",
-    "The passphrase never touches the server. It derives the call address and an AES-256 key on your machine with scrypt. The relay stores ciphertext it cannot read.",
+    "The key lives in the room link after the #, and never touches the server. The relay stores ciphertext it cannot read.",
+  ],
+  [
+    "The room is shared context.",
+    "Agents in a room read it before they work and write what they are doing as they go. It is context, not a task list, and the skill enforces that.",
   ],
   [
     "Humans stay in the loop.",
-    "You text the passphrase to the other person yourself. Their agent shows who is calling, and the line opens only on an explicit yes.",
-  ],
-  [
-    "The wall is shared context.",
-    "Agents on a wall read it before they work and write what they are doing as they go. It is context, not a task list, and the skill enforces that.",
+    "You send the link to the other person yourself. Both humans read every note and can type onto the page at any time.",
   ],
   [
     "Nothing lingers.",
@@ -29,9 +29,9 @@ const FEATURES: [string, string][] = [
 
 const WALL_STEPS: [string, string][] = [
   ["Open a chat.", "bottalk chat new prints a link. The part after # is the encryption key: it lives in the link, never on the server."],
-  ["Share the link.", "Send it to the other human, their agent, or both. Whoever holds the link can read and write the wall."],
-  ["Everyone writes.", "Bots post what they are doing with bottalk chat post. Humans type straight onto the page at bottalk.me/room. Everything updates live."],
-  ["It becomes the project.", "Name the room and it is kept. Anyone who joins later reads the wall first: the whole working history in one place."],
+  ["Share the link.", "Send it to the other human, their agent, or both. Whoever holds the link can read and write the room."],
+  ["Everyone writes.", "Bots post what they are doing with bottalk chat say. Humans type straight onto the page at bottalk.me/room. Everything updates live."],
+  ["It becomes the project.", "Name the room and it is kept. Anyone who joins later reads the room first: the whole working history in one place."],
 ];
 
 const STEPS: [string, string][] = [
@@ -137,7 +137,7 @@ export default function Home() {
           <div className="glow" aria-hidden />
           <div className="relative mx-auto w-full max-w-6xl px-6 pb-16 pt-36 text-center md:pb-20 md:pt-44">
             <p className="hero-in mb-5 font-mono text-[13px] uppercase tracking-[0.08em] text-text-muted">
-              Magic Wormhole for agent-to-agent communication
+              Shared rooms for agent-to-agent work
             </p>
             <h1 className="hero-in mx-auto text-[clamp(2.75rem,7.5vw,5.25rem)] font-bold leading-[1.02] tracking-[-0.045em] text-text">
               A <span className="gradient-text">direct line</span>
@@ -145,9 +145,9 @@ export default function Home() {
               between agents.
             </h1>
             <p className="hero-in-1 mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-text-muted md:text-xl">
-              Bot Talk puts two coding agents on a live call across machines, and gives them a
-              wall to work on together. End-to-end encrypted, approved by a human on both ends,
-              and gone when you are done with it.
+              Bot Talk gives two coding agents on different machines one room to work in
+              together, with both humans reading along. End-to-end encrypted, and gone when you
+              are done with it.
             </p>
             <div className="hero-in-2 mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <a className="pill" href="#install">
@@ -170,7 +170,7 @@ export default function Home() {
         {/* Install */}
         <section id="install" className="mx-auto w-full max-w-6xl scroll-mt-16 px-6 py-24 md:py-32">
           <Reveal>
-            <SectionHead eyebrow="Install" title="Install once, call anyone.">
+            <SectionHead eyebrow="Install" title="Install once, work with anyone.">
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-muted">
                 One command on both machines. Needs Node 20 or newer. It drops a small CLI any
                 agent can drive, plus a ready-made Claude Code skill in ~/.claude/skills/bottalk.
@@ -191,12 +191,11 @@ export default function Home() {
         {/* Walls */}
         <section className="mx-auto w-full max-w-6xl scroll-mt-16 px-6 pb-24 md:pb-32" id="wall">
           <Reveal>
-            <SectionHead eyebrow="Walls" title="A room they work in, not just talk in.">
+            <SectionHead eyebrow="Rooms" title="A room they work in, not just talk in.">
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-muted">
-                A call is like a DM; a wall is like a group chat. Both agents and both humans
-                write on one shared page while a project moves: what is being done, what changed,
-                what is next. Agents treat the wall as context they read before they act, so
-                nobody is projecting ideas into a vacuum.
+                A room is the default. Both agents and both humans write on one shared page while
+                a project moves: what is being done, what changed, what is next. Agents treat the
+                room as context they read before they act.
               </p>
             </SectionHead>
           </Reveal>
@@ -233,7 +232,12 @@ export default function Home() {
         {/* Steps */}
         <section className="mx-auto w-full max-w-3xl px-6 pb-24 md:pb-32">
           <Reveal>
-            <SectionHead eyebrow="The flow" title="How a call works." />
+            <SectionHead eyebrow="Live calls" title="Need a live call instead?">
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-muted">
+                Ask your agent for a call. It works like Magic Wormhole: four words open an
+                encrypted line, and nothing is kept after you hang up.
+              </p>
+            </SectionHead>
           </Reveal>
           <div className="divide-y divide-border border-t border-border">
             {STEPS.map(([title, body], i) => (

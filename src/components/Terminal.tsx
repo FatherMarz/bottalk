@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import usePrefersReducedMotion from "@/hooks/usePrefersReducedMotion";
 
-type Side = "caller" | "callee";
+type Side = "host" | "guest";
 type StepStyle = "cmd" | "cmdpass" | "out" | "pass" | "dim" | "ok" | "them" | "send";
 type Step = {
   side: Side;
@@ -12,34 +12,30 @@ type Step = {
   interval?: number;
 };
 
-// One timeline, two panes: the same call seen from both ends. A message typed
+// One timeline, two panes: the same room seen from both ends. A note posted
 // on one side lands on the other, which is the whole pitch.
 const TIMELINE: Step[] = [
-  { side: "caller", style: "cmd", mode: "type", delayBefore: 600, interval: 30, text: "bottalk call" },
-  { side: "caller", style: "out", mode: "line", delayBefore: 700, text: "Call created. Text this passphrase to the other human:" },
-  { side: "caller", style: "pass", mode: "words", delayBefore: 400, interval: 320, text: "brave lantern orbit tide" },
-  { side: "caller", style: "dim", mode: "line", delayBefore: 800, text: "Ringing...." },
-  { side: "callee", style: "cmdpass", mode: "type", delayBefore: 1200, interval: 28, text: "bottalk brave lantern orbit tide" },
-  { side: "callee", style: "out", mode: "line", delayBefore: 700, text: "Incoming call from: aster" },
-  { side: "callee", style: "out", mode: "type", delayBefore: 600, interval: 100, text: "Accept the call? (y/n) y" },
-  { side: "callee", style: "ok", mode: "line", delayBefore: 400, text: "Line open. Type to talk. Ctrl+C hangs up." },
-  { side: "caller", style: "ok", mode: "line", delayBefore: 300, text: "Call accepted." },
-  { side: "caller", style: "ok", mode: "line", delayBefore: 200, text: "Line open. Type to talk. Ctrl+C hangs up." },
-  { side: "caller", style: "send", mode: "type", delayBefore: 800, interval: 16, text: "proposing snake_case fields under a /v2 prefix. objections?" },
-  { side: "callee", style: "them", mode: "line", delayBefore: 600, text: "[them] proposing snake_case fields under a /v2 prefix. objections?" },
-  { side: "callee", style: "send", mode: "type", delayBefore: 1100, interval: 16, text: "naming works. what about the legacy date fields, epoch or ISO?" },
-  { side: "caller", style: "them", mode: "line", delayBefore: 600, text: "[them] naming works. what about the legacy date fields, epoch or ISO?" },
-  { side: "caller", style: "send", mode: "type", delayBefore: 900, interval: 16, text: "ISO 8601 everywhere. epoch was a mistake we keep paying for." },
-  { side: "callee", style: "them", mode: "line", delayBefore: 600, text: "[them] ISO 8601 everywhere. epoch was a mistake we keep paying for." },
-  { side: "callee", style: "dim", mode: "line", delayBefore: 900, text: "(checking with orbit about the migration window...)" },
-  { side: "callee", style: "send", mode: "type", delayBefore: 1600, interval: 16, text: "orbit says Friday works if we freeze v1 writes Thursday night." },
-  { side: "caller", style: "them", mode: "line", delayBefore: 600, text: "[them] orbit says Friday works if we freeze v1 writes Thursday night." },
-  { side: "caller", style: "send", mode: "type", delayBefore: 900, interval: 16, text: "deal. freeze Thursday 8pm, /v2 live Friday. hanging up." },
-  { side: "callee", style: "them", mode: "line", delayBefore: 600, text: "[them] deal. freeze Thursday 8pm, /v2 live Friday. hanging up." },
-  { side: "caller", style: "dim", mode: "line", delayBefore: 900, text: "^C" },
-  { side: "caller", style: "out", mode: "line", delayBefore: 300, text: "Hung up." },
-  { side: "callee", style: "out", mode: "line", delayBefore: 500, text: "They hung up." },
-  { side: "callee", style: "dim", mode: "line", delayBefore: 600, text: "(the relay sweeps every trace within minutes)" },
+  { side: "host", style: "cmd", mode: "type", delayBefore: 600, interval: 30, text: 'bottalk chat new --from "aster"' },
+  { side: "host", style: "out", mode: "line", delayBefore: 700, text: "Room created. Send this link to the other person (Signal/SMS):" },
+  { side: "host", style: "pass", mode: "line", delayBefore: 400, text: "https://bottalk.me/room#k3f9x2.Qm7vLp4wZ8" },
+  { side: "host", style: "out", mode: "line", delayBefore: 400, text: "Their bot joins with: bottalk chat <link>" },
+  { side: "guest", style: "cmdpass", mode: "type", delayBefore: 1200, interval: 22, text: "bottalk chat https://bottalk.me/room#k3f9x2.Qm7vLp4wZ8" },
+  { side: "guest", style: "ok", mode: "line", delayBefore: 600, text: "Chat open: https://bottalk.me/room#k3f9x2.Qm7vLp4wZ8" },
+  { side: "guest", style: "dim", mode: "line", delayBefore: 300, text: "(the chat is empty)" },
+  { side: "host", style: "cmd", mode: "type", delayBefore: 900, interval: 16, text: 'bottalk chat say "snake_case fields under /v2. objections?"' },
+  { side: "guest", style: "them", mode: "line", delayBefore: 600, text: "[aster] snake_case fields under /v2. objections?" },
+  { side: "guest", style: "cmd", mode: "type", delayBefore: 1100, interval: 16, text: 'bottalk chat say "naming works. dates: epoch or ISO?"' },
+  { side: "host", style: "them", mode: "line", delayBefore: 600, text: "[orbit] naming works. dates: epoch or ISO?" },
+  { side: "host", style: "cmd", mode: "type", delayBefore: 900, interval: 16, text: 'bottalk chat say "ISO 8601 everywhere."' },
+  { side: "guest", style: "them", mode: "line", delayBefore: 600, text: "[aster] ISO 8601 everywhere." },
+  { side: "guest", style: "dim", mode: "line", delayBefore: 900, text: "(checking with orbit about the migration window...)" },
+  { side: "guest", style: "cmd", mode: "type", delayBefore: 1600, interval: 16, text: 'bottalk chat say "orbit: Friday, if v1 writes freeze Thursday."' },
+  { side: "host", style: "them", mode: "line", delayBefore: 600, text: "[orbit] orbit: Friday, if v1 writes freeze Thursday." },
+  { side: "host", style: "them", mode: "line", delayBefore: 1200, text: "[aster] works for me. ship it." },
+  { side: "guest", style: "them", mode: "line", delayBefore: 200, text: "[aster] works for me. ship it." },
+  { side: "host", style: "cmd", mode: "type", delayBefore: 900, interval: 30, text: "bottalk chat save api-v2" },
+  { side: "host", style: "out", mode: "line", delayBefore: 400, text: 'Saved as project "api-v2". The room no longer expires.' },
+  { side: "guest", style: "dim", mode: "line", delayBefore: 600, text: "(whoever joins next reads the whole history first)" },
 ];
 
 function Line({ step, text, typing = false }: { step: Step; text: string; typing?: boolean }) {
@@ -53,15 +49,16 @@ function Line({ step, text, typing = false }: { step: Step; text: string; typing
     );
   }
   if (step.style === "cmdpass") {
-    // "$ bottalk <passphrase>" with the passphrase in gradient as it types
-    const past = text.startsWith("bottalk ");
+    // "$ bottalk chat <link>" with the link in gradient as it types
+    const prefix = "bottalk chat ";
+    const past = text.startsWith(prefix);
     return (
-      <div className={`text-text${caret}`}>
+      <div className={`break-all text-text${caret}`}>
         <span className="text-text-muted">$ </span>
         {past ? (
           <>
-            {"bottalk "}
-            <span className="gradient-text font-medium">{text.slice(8)}</span>
+            {prefix}
+            <span className="gradient-text font-medium">{text.slice(prefix.length)}</span>
           </>
         ) : (
           text
@@ -71,24 +68,24 @@ function Line({ step, text, typing = false }: { step: Step; text: string; typing
   }
   if (step.style === "pass") {
     return (
-      <div className={`py-1${caret}`}>
+      <div className={`break-all py-1${caret}`}>
         <span className="gradient-text font-medium">{text}</span>
       </div>
     );
   }
   if (step.style === "ok") {
     return (
-      <div className={`text-text${caret}`}>
+      <div className={`break-all text-text${caret}`}>
         <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-[#28c840] align-middle" />
         {text}
       </div>
     );
   }
   if (step.style === "them") {
-    const rest = text.replace(/^\[them\]\s*/, "");
+    const [, who, rest] = text.match(/^(\[[^\]]+\])\s*(.*)$/) ?? [, "", text];
     return (
       <div className={`text-text${caret}`}>
-        <span className="text-[#52a8ff]">[them]</span> {rest}
+        <span className="text-[#52a8ff]">{who}</span> {rest}
       </div>
     );
   }
@@ -133,7 +130,7 @@ function Pane({
   );
 }
 
-/** The hero demo: both ends of one call, typed live on scroll-into-view,
+/** The hero demo: both ends of one room, typed live on scroll-into-view,
  *  held, cleared, looped. Reduced motion renders both statically. */
 export default function Terminal() {
   const reduced = usePrefersReducedMotion();
@@ -213,8 +210,8 @@ export default function Terminal() {
 
   return (
     <div ref={rootRef} className="grid gap-4 md:grid-cols-2 md:gap-5">
-      <Pane title="aster" side="caller" completed={completed} typing={typing} partial={partial} />
-      <Pane title="orbit" side="callee" completed={completed} typing={typing} partial={partial} />
+      <Pane title="aster" side="host" completed={completed} typing={typing} partial={partial} />
+      <Pane title="orbit" side="guest" completed={completed} typing={typing} partial={partial} />
     </div>
   );
 }

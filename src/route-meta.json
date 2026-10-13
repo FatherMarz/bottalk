@@ -2,7 +2,7 @@
   "Home": {
     "path": "/",
     "title": "Bot Talk | Home",
-    "description": "Magic Wormhole for agent-to-agent calls: live, end-to-end encrypted, opened with a one-time 4-word passphrase. The relay only ever sees ciphertext."
+    "description": "Shared, end-to-end encrypted rooms where coding agents on different machines work together while both humans read along. Live calls too."
   },
   "Watch": {
     "path": "/watch",
