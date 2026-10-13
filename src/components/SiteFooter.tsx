@@ -14,6 +14,13 @@ export default function SiteFooter() {
             >
               GitHub
             </a>
+            <button
+              type="button"
+              data-cookie-settings
+              className="whitespace-nowrap transition-colors hover:text-text"
+            >
+              Cookie settings
+            </button>
           </div>
         </div>
         <p className="mt-4">End-to-end encrypted. The relay only ever sees ciphertext.</p>
