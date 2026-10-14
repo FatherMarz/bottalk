@@ -14,13 +14,14 @@ import {
   hkdfSync,
   randomInt,
   randomBytes,
+  createHash,
   createCipheriv,
   createDecipheriv,
 } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync, rmSync, chmodSync, existsSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
-import { dirname, join } from "node:path";
-import { spawn } from "node:child_process";
+import { dirname, join, resolve as resolvePath } from "node:path";
+import { spawn, execFileSync } from "node:child_process";
 import process from "node:process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -36,7 +37,7 @@ const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(/\/$/, "
 const STATE_PATH = process.env.BOTTALK_STATE ?? join(homedir(), ".bottalk", "call.json");
 const WALL_PATH = process.env.BOTTALK_WALL_STATE ?? join(homedir(), ".bottalk", "wall.json");
 
-const VERSION = "1.6.2";
+const VERSION = "1.7.0";
 const PROTO = "bottalk-v1";
 const POLL_MS = 1000;
 const DEFAULT_WAIT_SECS = 240;
@@ -943,6 +944,588 @@ async function cmdChat(args) {
 }
 
 // ---------------------------------------------------------------------------
+// line: a standing room between two people where each one's bot answers the
+// other with no human in the loop. It is an ordinary room underneath (same
+// crypto, same server), never saved, so it never shows in the public project
+// list. Each owner shares named project folders; the bot works only there.
+//
+// A note to a bot carries { to, project, kind: "ask" }. A human on the web
+// page writes "@<name> <project>: <text>". The bot's progress comes back as
+// { re, kind: "action" } notes and its answer as { re, kind: "done" }.
+//
+// Wake-up: polling the room would keep the database awake around the clock,
+// so a content-free ping goes through ntfy (BOTTALK_PUSH, default ntfy.sh)
+// on a topic derived from the room key. A slow poll is the backstop.
+
+const LINES_PATH = process.env.BOTTALK_LINES ?? join(homedir(), ".bottalk", "lines.json");
+const LINE_STATE_PATH = LINES_PATH.replace(/\.json$/, "") + "-state.json";
+const PUSH = (process.env.BOTTALK_PUSH ?? "https://ntfy.sh").replace(/\/$/, "");
+const PUSH_OFF = PUSH === "off";
+const LINE_POLL_SECS = Number(process.env.BOTTALK_LINE_POLL ?? (PUSH_OFF ? 60 : 600));
+const LINE_TOUCH_MS = 24 * 3600 * 1000;
+const LINE_BOT_TIMEOUT_MS = 60 * 60 * 1000;
+const LINE_KEEP_NOTES = 300; // rooms hold 500 live notes; trim the oldest past 450
+const LINE_MODES = ["bypassPermissions", "auto", "acceptEdits", "dontAsk", "manual", "plan"];
+
+function readJson(path, fallback) {
+  if (!existsSync(path)) return fallback;
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function writeJson(path, obj) {
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  writeFileSync(path, JSON.stringify(obj, null, 2), { mode: 0o600 });
+  chmodSync(path, 0o600);
+}
+
+/** lines.json is the owner's config (written only by line commands);
+ *  lines-state.json is the listener's memory (seen notes, bot sessions). */
+function loadLines() {
+  const c = readJson(LINES_PATH, { v: 1, lines: {} });
+  for (const l of Object.values(c.lines)) l.keyBuf = Buffer.from(l.key, "base64url");
+  return c;
+}
+
+function saveLines(c) {
+  const out = { ...c, lines: {} };
+  for (const [n, l] of Object.entries(c.lines)) {
+    const { keyBuf, ...rest } = l;
+    out.lines[n] = rest;
+  }
+  writeJson(LINES_PATH, out);
+}
+
+function pickLine(c, args) {
+  const want = flag(args, "--line");
+  const names = Object.keys(c.lines);
+  if (names.length === 0) die("No line yet. `line new --me <your name> --name <their name>` or `line join <link>`.");
+  if (want) {
+    if (!c.lines[want]) die(`No line called "${want}". Lines: ${names.join(", ")}`);
+    return [want, c.lines[want]];
+  }
+  if (names.length > 1) die(`More than one line. Add --line <name>. Lines: ${names.join(", ")}`);
+  return [names[0], c.lines[names[0]]];
+}
+
+function lineWall(l) {
+  return { id: l.id, key: l.keyBuf };
+}
+
+function pingTopic(l) {
+  return "bottalk-" + createHash("sha256").update(`bottalk-line-ping|${l.id}|`).update(l.keyBuf).digest("hex").slice(0, 32);
+}
+
+async function linePing(l) {
+  if (PUSH_OFF) return;
+  try {
+    await fetch(`${PUSH}/${pingTopic(l)}`, { method: "POST", body: "1" });
+  } catch {
+    // The slow poll still picks the note up.
+  }
+}
+
+async function linePost(l, obj) {
+  const clientId = randomBytes(16).toString("hex");
+  await wallApi({
+    action: "post",
+    id: l.id,
+    notes: [{ client_id: clientId, ct: wallSeal(l.keyBuf, l.id, clientId, { ts: Date.now(), ...obj }) }],
+  });
+  return clientId;
+}
+
+/** A web-page note "@aster stash: fix the login" becomes an ask. */
+function parseAsk(note) {
+  if (note.kind === "ask" && note.to) return { to: note.to, project: note.project ?? null, text: note.text };
+  if (note.kind) return null;
+  const m = /^\s*@([\w.-]+)\s+(?:([\w.-]+):\s+)?([\s\S]+)$/.exec(note.text ?? "");
+  if (!m) return null;
+  return { to: m[1], project: m[2] ?? null, text: m[3] };
+}
+
+function sameName(a, b) {
+  return String(a ?? "").toLowerCase() === String(b ?? "").toLowerCase();
+}
+
+function lineUrl(l) {
+  return `${BASE}/room#${l.id}.${l.keyBuf.toString("base64url")}`;
+}
+
+/** Wait for notes that answer `askId`. Prints actions as they arrive and
+ *  returns on the done or refused note. */
+async function lineWaitFor(l, askId, timeoutSecs) {
+  const printed = new Set();
+  const deadline = Date.now() + timeoutSecs * 1000;
+  while (Date.now() < deadline) {
+    let notes = [];
+    try {
+      notes = (await wallFetch(lineWall(l))).notes;
+    } catch {
+      await sleep(WALL_POLL_MS * 2);
+      continue;
+    }
+    for (const n of notes) {
+      if (n.re !== askId || printed.has(n.clientId)) continue;
+      printed.add(n.clientId);
+      console.log(`[${n.author ?? "?"}${n.kind === "action" ? "" : ` ${n.kind}`}] ${n.text}`);
+      if (n.kind === "done" || n.kind === "refused") return;
+    }
+    await sleep(WALL_POLL_MS * 2);
+  }
+  console.log(`(still working; run \`bottalk line wait ${askId}\` to keep waiting)`);
+  process.exit(2);
+}
+
+function runBot({ bin, cwd, mode, prompt, resume, env }) {
+  return new Promise((resolve) => {
+    const args = ["-p", prompt, "--output-format", "json", "--permission-mode", mode];
+    if (resume) args.push("--resume", resume);
+    const child = spawn(bin, args, { cwd, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] });
+    let out = "";
+    let err = "";
+    child.stdout.on("data", (d) => (out += d));
+    child.stderr.on("data", (d) => (err += d));
+    const timer = setTimeout(() => child.kill("SIGTERM"), LINE_BOT_TIMEOUT_MS);
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      resolve({ ok: false, error: e.message });
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      try {
+        const j = JSON.parse(out);
+        resolve({ ok: code === 0 && !j.is_error, text: j.result ?? "", session: j.session_id ?? null, error: err.trim() });
+      } catch {
+        resolve({ ok: false, error: (err || out).trim().slice(-2000) || `claude exited ${code}` });
+      }
+    });
+  });
+}
+
+function botPrompt(l, from, project, text) {
+  return [
+    `${from} sent you a message over a bot talk line. You are ${l.me}'s bot, working for ${l.me}.`,
+    `${l.me} shared the project "${project}" (this folder) with ${from}. Work only inside it.`,
+    `${from} can ask you to answer questions, change code, commit, push or deploy. Do what they ask.`,
+    `${l.me} is not watching. Do not wait for anyone to approve anything.`,
+    `Every time you change something (edit a file, commit, push, deploy, install, run a migration),`,
+    `post one line about it right away: bottalk line post "<what you did and where>"`,
+    `Never post or print secrets, keys or passwords.`,
+    `Your last message is posted back to ${from} for you as the answer. Keep it short and plain.`,
+    ``,
+    `Message from ${from}:`,
+    text,
+  ].join("\n");
+}
+
+async function handleAsk(name, l, st, note, ask) {
+  const shared = Object.keys(l.projects ?? {});
+  let project = ask.project;
+  if (!project && shared.length === 1) project = shared[0];
+  const author = `${l.me}'s bot`;
+  if (!project || !l.projects?.[project]) {
+    const why = project ? `${l.me} has not shared "${project}".` : "Name a project.";
+    const list = shared.length ? `Shared projects: ${shared.join(", ")}.` : `${l.me} has not shared any projects yet.`;
+    await linePost(l, { author, kind: "refused", re: note.clientId, text: `${why} ${list}` });
+    await linePing(l);
+    return;
+  }
+  const p = l.projects[project];
+  const cwd = p.path;
+  if (!existsSync(cwd)) {
+    await linePost(l, { author, kind: "refused", re: note.clientId, text: `The folder for "${project}" is missing on ${l.me}'s machine.` });
+    await linePing(l);
+    return;
+  }
+  await linePost(l, { author, kind: "action", re: note.clientId, text: `started on "${project}"` });
+  const sessions = (st.lines[name].sessions ??= {});
+  const env = { BOTTALK_LINES: LINES_PATH, BOTTALK_LINE: name, BOTTALK_LINE_RE: note.clientId, BOTTALK_NO_BROWSER: "1" };
+  const prompt = botPrompt(l, note.author ?? "the other side", project, ask.text);
+  const bin = lineBin();
+  let r = await runBot({ bin, cwd, mode: p.mode, prompt, resume: sessions[project], env });
+  if (!r.ok && sessions[project]) {
+    // An expired or missing session: start fresh rather than fail the ask.
+    r = await runBot({ bin, cwd, mode: p.mode, prompt, resume: null, env });
+  }
+  if (r.session) sessions[project] = r.session;
+  const text = r.ok ? r.text || "(done, no reply text)" : `The bot failed: ${r.error || "unknown error"}`;
+  await linePost(l, { author, kind: "done", re: note.clientId, text: text.slice(0, 12000) });
+  await linePing(l);
+}
+
+function lineBin() {
+  return loadLines().claude_bin || process.env.BOTTALK_CLAUDE || "claude";
+}
+
+/** One pass over one line: act on new asks for this owner, keep the room
+ *  alive, trim old notes. */
+async function lineCheck(name, st) {
+  const c = loadLines(); // re-read: the owner can share or unshare while we run
+  const l = c.lines[name];
+  if (!l) return;
+  st.lines[name] ??= { seen: [], primed: false };
+  const ls = st.lines[name];
+  const { notes } = await wallFetch(lineWall(l));
+  const seen = new Set(ls.seen);
+  if (!ls.primed) {
+    // First start: never replay old history.
+    for (const n of notes) seen.add(n.clientId);
+    ls.primed = true;
+  }
+  for (const n of notes) {
+    if (seen.has(n.clientId)) continue;
+    seen.add(n.clientId);
+    ls.seen = [...seen];
+    writeJson(LINE_STATE_PATH, st);
+    const ask = parseAsk(n);
+    if (!ask || !sameName(ask.to, l.me)) continue;
+    console.log(`${new Date().toISOString()} [${name}] ask from ${n.author}: ${ask.text.slice(0, 120)}`);
+    await handleAsk(name, l, st, n, ask);
+  }
+  const live = new Set(notes.map((n) => n.clientId));
+  ls.seen = [...seen].filter((id) => live.has(id));
+  if (!ls.touched || Date.now() - ls.touched > LINE_TOUCH_MS) {
+    await wallApi({ action: "touch", id: l.id });
+    ls.touched = Date.now();
+  }
+  if (notes.length > 450) {
+    for (const n of notes.slice(0, notes.length - LINE_KEEP_NOTES)) {
+      await wallApi({ action: "delete", id: l.id, client_id: n.clientId });
+    }
+  }
+  writeJson(LINE_STATE_PATH, st);
+}
+
+/** Stream ntfy pings for every line's topic; resolve on the first one. */
+function waitForPing(topics, maxMs) {
+  return new Promise((resolve) => {
+    if (PUSH_OFF || topics.length === 0) return setTimeout(resolve, maxMs);
+    const ac = new AbortController();
+    const done = () => {
+      clearTimeout(timer);
+      ac.abort();
+      resolve();
+    };
+    const timer = setTimeout(done, maxMs);
+    (async () => {
+      try {
+        const r = await fetch(`${PUSH}/${topics.join(",")}/json`, { signal: ac.signal });
+        let buf = "";
+        for await (const chunk of r.body) {
+          buf += Buffer.from(chunk).toString("utf8");
+          let i;
+          while ((i = buf.indexOf("\n")) >= 0) {
+            const line = buf.slice(0, i);
+            buf = buf.slice(i + 1);
+            try {
+              if (JSON.parse(line).event === "message") return done();
+            } catch {}
+          }
+        }
+        // Stream closed: back off a little, then let the loop re-check.
+        setTimeout(done, 5000);
+      } catch {
+        if (!ac.signal.aborted) setTimeout(done, 15000);
+      }
+    })();
+  });
+}
+
+async function lineListen() {
+  const c0 = loadLines();
+  if (c0.path_env) process.env.PATH = c0.path_env;
+  console.log(`${new Date().toISOString()} bot talk line listener ${VERSION} (push: ${PUSH_OFF ? "off" : PUSH})`);
+  const st = readJson(LINE_STATE_PATH, { v: 1, lines: {} });
+  for (;;) {
+    const c = loadLines();
+    const names = Object.keys(c.lines);
+    for (const name of names) {
+      try {
+        await lineCheck(name, st);
+      } catch (e) {
+        console.error(`${new Date().toISOString()} [${name}] ${e?.message ?? e}`);
+      }
+    }
+    await waitForPing(names.map((n) => pingTopic(c.lines[n])), LINE_POLL_SECS * 1000);
+  }
+}
+
+function serviceInstall() {
+  const c = loadLines();
+  const node = process.execPath;
+  const cli = fileURLToPath(import.meta.url);
+  const which = (cmd) => {
+    try {
+      return execFileSync("sh", ["-lc", `command -v ${cmd}`], { encoding: "utf8" }).trim();
+    } catch {
+      return "";
+    }
+  };
+  c.claude_bin = process.env.BOTTALK_CLAUDE || which("claude") || c.claude_bin;
+  if (!c.claude_bin) die("Claude Code (`claude`) was not found on PATH. Install it first.");
+  c.path_env = process.env.PATH;
+  saveLines(c);
+  const log = join(dirname(LINES_PATH), "line.log");
+  const isWsl = process.platform === "linux" && /microsoft/i.test(readFileSync("/proc/version", "utf8"));
+
+  if (process.platform === "darwin") {
+    const plist = join(homedir(), "Library", "LaunchAgents", "me.bottalk.line.plist");
+    const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    mkdirSync(dirname(plist), { recursive: true });
+    writeFileSync(
+      plist,
+      `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>me.bottalk.line</string>
+  <key>ProgramArguments</key><array><string>${esc(node)}</string><string>${esc(cli)}</string><string>line</string><string>listen</string></array>
+  <key>EnvironmentVariables</key><dict><key>BOTTALK_LINES</key><string>${esc(LINES_PATH)}</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>${esc(log)}</string>
+  <key>StandardErrorPath</key><string>${esc(log)}</string>
+</dict></plist>
+`,
+    );
+    const uid = process.getuid();
+    try {
+      execFileSync("launchctl", ["bootout", `gui/${uid}/me.bottalk.line`], { stdio: "ignore" });
+    } catch {}
+    execFileSync("launchctl", ["bootstrap", `gui/${uid}`, plist]);
+    console.log(`Listener running. It starts again at every login. Log: ${log}`);
+    return;
+  }
+
+  if (isWsl) {
+    // WSL stops when no Windows process holds it open, so Windows starts the
+    // listener at logon. conhost --headless keeps the console window hidden.
+    const distro = process.env.WSL_DISTRO_NAME;
+    if (!distro) die("WSL_DISTRO_NAME is not set; run this from a WSL shell.");
+    const tr = `conhost.exe --headless wsl.exe -d ${distro} -e sh -c "BOTTALK_LINES='${LINES_PATH}' '${node}' '${cli}' line listen >> '${log}' 2>&1"`;
+    execFileSync("schtasks.exe", ["/create", "/f", "/tn", "bottalk-line", "/sc", "onlogon", "/tr", tr], { stdio: "inherit" });
+    execFileSync("schtasks.exe", ["/run", "/tn", "bottalk-line"], { stdio: "inherit" });
+    console.log(`Listener running. Windows starts it again at every login. Log: ${log}`);
+    return;
+  }
+
+  if (process.platform === "linux") {
+    const unit = join(homedir(), ".config", "systemd", "user", "bottalk-line.service");
+    mkdirSync(dirname(unit), { recursive: true });
+    writeFileSync(
+      unit,
+      `[Unit]
+Description=bot talk line listener
+
+[Service]
+Environment=BOTTALK_LINES=${LINES_PATH}
+ExecStart=${node} ${cli} line listen
+Restart=always
+RestartSec=10
+StandardOutput=append:${log}
+StandardError=append:${log}
+
+[Install]
+WantedBy=default.target
+`,
+    );
+    execFileSync("systemctl", ["--user", "daemon-reload"]);
+    execFileSync("systemctl", ["--user", "enable", "--now", "bottalk-line.service"]);
+    console.log(`Listener running. Log: ${log}`);
+    return;
+  }
+
+  die("No service support for this system. Run `bottalk line listen` in a terminal that stays open.");
+}
+
+function serviceUninstall() {
+  if (process.platform === "darwin") {
+    const plist = join(homedir(), "Library", "LaunchAgents", "me.bottalk.line.plist");
+    try {
+      execFileSync("launchctl", ["bootout", `gui/${process.getuid()}/me.bottalk.line`], { stdio: "ignore" });
+    } catch {}
+    rmSync(plist, { force: true });
+  } else if (process.platform === "linux" && /microsoft/i.test(readFileSync("/proc/version", "utf8"))) {
+    try {
+      execFileSync("schtasks.exe", ["/end", "/tn", "bottalk-line"], { stdio: "ignore" });
+    } catch {}
+    execFileSync("schtasks.exe", ["/delete", "/f", "/tn", "bottalk-line"], { stdio: "inherit" });
+    try {
+      execFileSync("pkill", ["-f", "bottalk.mjs line listen"], { stdio: "ignore" });
+    } catch {}
+  } else if (process.platform === "linux") {
+    execFileSync("systemctl", ["--user", "disable", "--now", "bottalk-line.service"]);
+    rmSync(join(homedir(), ".config", "systemd", "user", "bottalk-line.service"), { force: true });
+  }
+  console.log("Listener stopped and removed.");
+}
+
+async function cmdLine(args) {
+  const sub = args.shift() ?? "";
+
+  if (sub === "new" || sub === "join") {
+    const me = flag(args, "--me") ?? userInfo().username;
+    let id;
+    let key;
+    let name = flag(args, "--name");
+    if (sub === "new") {
+      if (!name) die('Usage: line new --me <your name> --name <their name>');
+      id = wallId();
+      key = randomBytes(32);
+      await post("/api/wall", { action: "create", id });
+    } else {
+      const ref = parseWallRef(args.join(" "));
+      if (!ref) die("Usage: line join <link> --me <your name> [--name <their name>]");
+      id = ref.id;
+      key = ref.key;
+      name ??= "line";
+    }
+    const c = loadLines();
+    if (c.lines[name]) die(`A line called "${name}" exists already. Pick another --name.`);
+    c.lines[name] = { id, key: key.toString("base64url"), me, projects: {} };
+    saveLines(c);
+    const l = loadLines().lines[name];
+    await linePost(l, { author: me, text: `${me} ${sub === "new" ? "opened" : "joined"} the line.` });
+    if (sub === "new") {
+      console.log(`Line "${name}" created. Send this link to them once (Signal/SMS):\n`);
+      console.log(`    ${lineUrl(l)}\n`);
+      console.log(`They run: bottalk line join <link> --me <their name> --name ${me}`);
+    } else {
+      console.log(`Joined line "${name}".`);
+    }
+    console.log(`Share a project with: bottalk line share <project> [folder]   (run inside the folder)`);
+    console.log(`Then start the listener: bottalk line service install`);
+    return;
+  }
+
+  if (sub === "share") {
+    const c = loadLines();
+    const [name, l] = pickLine(c, args);
+    // auto: no prompts, but Claude Code's own safety check still reviews each
+    // risky step. bypassPermissions is there for owners who want no check.
+    const mode = flag(args, "--mode") ?? "auto";
+    if (!LINE_MODES.includes(mode)) die(`--mode must be one of: ${LINE_MODES.join(", ")}`);
+    const [project, folder] = args;
+    if (!project || !/^[\w.-]+$/.test(project)) die("Usage: line share <project-name> [folder] [--mode <mode>]");
+    const path = resolvePath(folder ?? process.cwd());
+    if (!existsSync(path)) die(`No such folder: ${path}`);
+    l.projects ??= {};
+    l.projects[project] = { path, mode };
+    saveLines(c);
+    await linePost(loadLines().lines[name], { author: l.me, text: `${l.me} shared "${project}" on this line.` });
+    console.log(`Shared "${project}" (${path}) on line "${name}". Their asks run with --permission-mode ${mode}.`);
+    return;
+  }
+
+  if (sub === "unshare") {
+    const c = loadLines();
+    const [name, l] = pickLine(c, args);
+    const project = args[0];
+    if (!l.projects?.[project]) die(`"${project}" is not shared on line "${name}".`);
+    delete l.projects[project];
+    saveLines(c);
+    await linePost(loadLines().lines[name], { author: l.me, text: `${l.me} stopped sharing "${project}".` });
+    console.log(`Stopped sharing "${project}".`);
+    return;
+  }
+
+  if (sub === "ls" || sub === "") {
+    const c = loadLines();
+    const names = Object.keys(c.lines);
+    if (names.length === 0) die("No line yet. `line new --me <you> --name <them>` or `line join <link> --me <you>`.", sub ? 1 : 0);
+    for (const n of names) {
+      const l = c.lines[n];
+      const shared = Object.entries(l.projects ?? {}).map(([p, v]) => `${p} (${v.path}, ${v.mode})`);
+      console.log(`${n}: you are "${l.me}". Shared: ${shared.length ? shared.join("; ") : "nothing"}`);
+      console.log(`  ${lineUrl(l)}`);
+    }
+    return;
+  }
+
+  if (sub === "ask") {
+    const c = loadLines();
+    const [name, l] = pickLine(c, args);
+    const project = flag(args, "--project");
+    const timeout = Number(flag(args, "--timeout") ?? DEFAULT_WAIT_SECS);
+    const [to, ...rest] = args;
+    let text = rest.join(" ");
+    if (text === "-") {
+      const chunks = [];
+      for await (const ch of process.stdin) chunks.push(ch);
+      text = Buffer.concat(chunks).toString("utf8");
+    }
+    if (!to || !text.trim()) die('Usage: line ask <their name> "<text>" [--project <name>]');
+    const id = await linePost(l, { author: l.me, kind: "ask", to, project, text: text.trim() });
+    await linePing(l);
+    console.log(`Asked ${to}'s bot (${id}).`);
+    await lineWaitFor(l, id, timeout);
+    return;
+  }
+
+  if (sub === "wait") {
+    const c = loadLines();
+    const [name, l] = pickLine(c, args);
+    const timeout = Number(flag(args, "--timeout") ?? DEFAULT_WAIT_SECS);
+    if (!args[0]) die("Usage: line wait <ask id>");
+    await lineWaitFor(l, args[0], timeout);
+    return;
+  }
+
+  if (sub === "post") {
+    // Used by the bot while it works; BOTTALK_LINE / BOTTALK_LINE_RE come from the listener.
+    const c = loadLines();
+    if (process.env.BOTTALK_LINE) args.push("--line", process.env.BOTTALK_LINE);
+    const [, l] = pickLine(c, args);
+    let text = args.join(" ");
+    if (text === "-") {
+      const chunks = [];
+      for await (const ch of process.stdin) chunks.push(ch);
+      text = Buffer.concat(chunks).toString("utf8");
+    }
+    if (!text.trim()) die('Usage: line post "<text>"');
+    const re = process.env.BOTTALK_LINE_RE;
+    await linePost(l, re ? { author: `${l.me}'s bot`, kind: "action", re, text: text.trim() } : { author: l.me, text: text.trim() });
+    if (!re && /^\s*@[\w.-]+\s/.test(text)) await linePing(l);
+    console.log("Posted.");
+    return;
+  }
+
+  if (sub === "listen") return lineListen();
+
+  if (sub === "service") {
+    const action = args[0];
+    if (action === "install") return serviceInstall();
+    if (action === "uninstall") return serviceUninstall();
+    die("Usage: line service install | uninstall");
+  }
+
+  if (sub === "leave") {
+    const c = loadLines();
+    const [name] = pickLine(c, args);
+    delete c.lines[name];
+    saveLines(c);
+    console.log(`Left line "${name}" on this machine.`);
+    return;
+  }
+
+  console.error(`Usage: bottalk line <subcommand>
+
+  line new --me <you> --name <them>       open a standing line, prints the link
+  line join <link> --me <you> --name <them>   join a line from its link
+  line share <project> [folder] [--mode <mode>]   let their bot's asks run in this folder
+  line unshare <project>                   stop sharing it
+  line ls                                  lines and shared projects
+  line ask <them> "<text>" [--project <p>]    ask their bot, wait for its answer
+  line wait <ask id>                       keep waiting for an answer
+  line post "<text>"                       write on the line (the bot uses this)
+  line service install | uninstall         run the listener in the background
+  line listen                              run the listener in this terminal
+  line leave                               forget a line on this machine
+
+Add --line <name> when you have more than one line.`);
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
 // batch and the server sweep is the backstop, so just leave quietly.
 process.on("SIGINT", () => process.exit(130));
 process.on("SIGTERM", () => process.exit(143));
@@ -960,6 +1543,7 @@ const commands = {
   status: cmdStatus,
   chat: cmdChat,
   wall: cmdChat,
+  line: cmdLine,
   upgrade: cmdUpgrade,
   version: async () => console.log(VERSION),
   "--version": async () => console.log(VERSION),
@@ -976,6 +1560,7 @@ Usage: bottalk.mjs <command>
   chat new [--from "<who>"]              start a room (the default way bots talk)
   chat <link>                            join a room
   chat say | post | wait | ls | save     talk in the room (alias: wall)
+  line new | join | share | ask | ...    standing line: their bot answers yours, no human needed
 
   <four word passphrase>                 answer a ringing call
   call [--from "<who>"]                  place a live call, prints the passphrase

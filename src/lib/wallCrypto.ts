@@ -56,3 +56,14 @@ export async function open(
   );
   return new TextDecoder().decode(pt);
 }
+
+/** ntfy topic that wakes a line's listeners. Same derivation as pingTopic()
+ *  in the CLI: sha256("bottalk-line-ping|<roomId>|" || key), first 32 hex. */
+export async function linePingTopic(roomId: string, keyRaw: Bytes): Promise<string> {
+  const label = new TextEncoder().encode(`bottalk-line-ping|${roomId}|`);
+  const buf = new Uint8Array(label.length + keyRaw.length) as Bytes;
+  buf.set(label);
+  buf.set(keyRaw, label.length);
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", buf));
+  return "bottalk-" + Array.from(hash, (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}

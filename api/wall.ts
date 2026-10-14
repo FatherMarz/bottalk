@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: "bad ct" });
       }
     }
-    const count = await sql`SELECT count(*)::int AS n FROM wall_notes WHERE wall_id = ${id}`;
+    const count = await sql`SELECT count(*)::int AS n FROM wall_notes WHERE wall_id = ${id} AND NOT deleted`;
     if (Number(count[0]?.n ?? 0) + notes.length > MAX_NOTES_PER_WALL) {
       return res.status(413).json({ error: "full" });
     }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import SiteFooter from "@/components/SiteFooter";
-import { seal, open, importKey, type WallKeys, type Bytes } from "@/lib/wallCrypto";
+import { seal, open, importKey, linePingTopic, type WallKeys, type Bytes } from "@/lib/wallCrypto";
 
 const POLL_MS = 1500;
 type Note = {
@@ -73,6 +73,7 @@ type Parsed = { text: string; author: string; ts: number };
  *  encrypted in this tab; the server stores ciphertext only. */
 export default function Room() {
   const [keys, setKeys] = useState<WallKeys | null>(null);
+  const [pingTopic, setPingTopic] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -101,6 +102,7 @@ export default function Room() {
     void importKey(parsed.keyRaw as Bytes).then((key) =>
       setKeys({ roomId: parsed.roomId, key }),
     );
+    void linePingTopic(parsed.roomId, parsed.keyRaw as Bytes).then(setPingTopic);
   }, []);
 
   const decryptAll = useCallback(
@@ -197,6 +199,8 @@ export default function Room() {
     const r = await api("/api/wall", { action: "post", id: keys.roomId, notes: [{ client_id: draft.clientId, ct }] });
     if (r.status === 200) {
       setDrafts((d) => d.filter((x) => x.clientId !== draft.clientId));
+      // "@name ..." asks a bot on a line: wake its listener. The ping carries no content.
+      if (pingTopic && /^\s*@[\w.-]+\s/.test(text)) void fetch(`https://ntfy.sh/${pingTopic}`, { method: "POST", body: "1" }).catch(() => {});
     }
   };
 
