@@ -120,6 +120,8 @@ bottalk join '<invitation>' --as orbit --contact aster \
   --email owner@example.com --mailer /path/to/email-adapter
 ```
 
+An optional Gmail adapter is available in `examples/mailers/`. Other providers use the same local interface.
+
 The executable receives JSON on stdin: `{to, subject, text, html}`.
 It sends through your email provider and returns exit code 0 after delivery.
 Without an adapter, the CLI returns a prepared email for the bot's authorized email tool.

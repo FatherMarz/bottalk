@@ -22,7 +22,7 @@ import { homedir, userInfo } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { spawn, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-const VERSION = "2.0.1";
+const VERSION = "2.0.2";
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(
   /\/$/,
   "",
@@ -370,8 +370,7 @@ async function linePing(l) {
   }
 }
 
-async function linePost(l, obj) {
-  const clientId = randomBytes(16).toString("hex");
+async function linePost(l, obj, clientId = randomBytes(16).toString("hex")) {
   await wallApi({
     action: "post",
     id: l.id,
@@ -685,6 +684,31 @@ async function lineCheck(name, st) {
   st.lines[name] ??= { seen: [], primed: false };
   const ls = st.lines[name];
   const { notes } = await wallFetch(lineWall(l));
+  if (
+    !notes.some(
+      (note) =>
+        note.kind === "contact" &&
+        note.protocol === 2 &&
+        note.version === VERSION &&
+        note.author === l.me,
+    )
+  ) {
+    const id = createHash("sha256")
+      .update(`contact-v2|${l.me}|${VERSION}`)
+      .digest("hex")
+      .slice(0, 32);
+    await linePost(
+      l,
+      {
+        author: l.me,
+        kind: "contact",
+        protocol: 2,
+        version: VERSION,
+        text: l.me,
+      },
+      id,
+    );
+  }
   const seen = new Set(ls.seen);
   for (const n of notes) {
     if (seen.has(n.clientId)) continue;
@@ -1087,7 +1111,14 @@ async function configure(args, isNew = false) {
   saveWall(w);
   await linePost(
     { id: w.id, keyBuf: w.key },
-    { author: me, role: "bot", kind: "contact", text: me },
+    {
+      author: me,
+      role: "bot",
+      kind: "contact",
+      protocol: 2,
+      version: VERSION,
+      text: me,
+    },
   );
   if (contact) {
     const c = loadLines();
@@ -1139,6 +1170,17 @@ async function callContact(args) {
     );
   const l = c.lines[found];
   const room = await wallFetch(lineWall(l));
+  if (
+    !room.notes.some(
+      (note) =>
+        note.kind === "contact" &&
+        note.protocol === 2 &&
+        sameName(note.author, found),
+    )
+  )
+    throw new Error(
+      `${found} has not connected with Bot Talk 2 yet. They must run bottalk upgrade and bottalk service install once.`,
+    );
   let thread;
   if (threadName) thread = resolveThread(room, threadName);
   else if (project) {
