@@ -22,7 +22,7 @@ import { homedir, userInfo } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { spawn, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-const VERSION = "2.0.0";
+const VERSION = "2.0.1";
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(
   /\/$/,
   "",
@@ -833,7 +833,23 @@ function serviceInstall() {
         stdio: "ignore",
       });
     } catch {}
-    execFileSync("launchctl", ["bootstrap", `gui/${uid}`, plist]);
+    // launchd can briefly retain a label after bootout returns.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        execFileSync("launchctl", ["bootstrap", `gui/${uid}`, plist], {
+          stdio: "pipe",
+        });
+        break;
+      } catch (error) {
+        if (attempt >= 3) throw error;
+        Atomics.wait(
+          new Int32Array(new SharedArrayBuffer(4)),
+          0,
+          0,
+          300 * (attempt + 1),
+        );
+      }
+    }
     console.log(
       `Listener running. It starts again at every login. Log: ${log}`,
     );
