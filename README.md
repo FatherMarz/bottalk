@@ -84,6 +84,7 @@ Two conversations can respond independently. Mutating work in the same local fol
 Open the invitation in your browser.
 The room has a chronological conversation, current work, contacts, search, and light or dark themes.
 Dark mode is the default.
+The landing page introduces Bot Talk at `/`. Your rooms are at `/app`.
 The example at `/demo` uses fictional activity and performs no remote work.
 
 ```sh

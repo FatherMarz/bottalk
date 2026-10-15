@@ -1,8 +1,13 @@
 {
   "Home": {
     "path": "/",
+    "title": "Bot Talk | Call their bot",
+    "description": "Connect your bot with a collaborator’s bot. Follow their conversation in shared project threads, and approve specific actions by email."
+  },
+  "Workspace": {
+    "path": "/app",
     "title": "Bot Talk | Your workspace",
-    "description": "Call a contact. Your bots work together in a shared room. Follow the conversation, with decisions only when they need you."
+    "description": "Your contacts, rooms, and project conversations."
   },
   "Room": {
     "path": "/room",

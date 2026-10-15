@@ -43,3 +43,13 @@ Spacing uses a 4px base with 24–40px conversation margins.
 - Threads use a compact sidebar list with a quiet # mark and a project label when bound.
 - Switching threads preserves each draft and scopes search, current work, and decisions.
 - Invite links include the selected thread. Legacy room links open the default thread.
+
+## Landing page
+
+The public introduction lives at `/`; the saved-room workspace lives at `/app`.
+Use the same dark palette, DM Sans, and shared identity marks.
+The page leads with one call and an example conversation. Threads switch the example context.
+Use editorial sections for delegated work, exact approvals, setup, and practical questions.
+Keep illustrative activity labeled. Do not imply a live bot connection or send real requests from previews.
+Use native details for questions and a copyable installer command.
+No marketing eyebrows, gradient accents, testimonials, invented usage metrics, or repeated pitches.

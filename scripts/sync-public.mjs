@@ -5,4 +5,6 @@ import { copyFileSync, mkdirSync } from "node:fs";
 mkdirSync("public", { recursive: true });
 copyFileSync("client/bottalk.mjs", "public/bottalk.mjs");
 copyFileSync("skill/SKILL.md", "public/SKILL.md");
-console.log("synced client + skill into public/");
+copyFileSync("README.md", "public/guide.md");
+copyFileSync("LICENSE", "public/LICENSE.txt");
+console.log("synced client, skill, guide, and license into public/");

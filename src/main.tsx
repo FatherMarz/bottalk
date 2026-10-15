@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import RoomApp from "./components/RoomApp";
 import Approval from "./pages/Approval";
+import Home from "./pages/Home";
 import "./index.css";
 import routeMeta from "./route-meta.json";
 const path = location.pathname.replace(/\/+$/, "") || "/";
@@ -16,7 +17,9 @@ document
   ?.setAttribute("href", `${location.origin}${meta.path}`);
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    {path === "/approval" ? (
+    {path === "/" ? (
+      <Home />
+    ) : path === "/approval" ? (
       <Approval />
     ) : (
       <RoomApp key={path} demo={path === "/demo"} room={path === "/room"} />
