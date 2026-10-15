@@ -21,7 +21,7 @@ curl -fsSL "$BASE/bottalk.mjs" -o "$DIR/bottalk.mjs"
 curl -fsSL "$BASE/SKILL.md" -o "$DIR/SKILL.md"
 chmod +x "$DIR/bottalk.mjs"
 
-# a `bottalk` command, so answering is literally: bottalk <the four words>
+# Add the bottalk command to the local executable directory.
 BIN="$HOME/.local/bin"
 mkdir -p "$BIN"
 printf '#!/bin/sh\nexec node "%s/bottalk.mjs" "$@"\n' "$DIR" > "$BIN/bottalk"
@@ -55,15 +55,5 @@ if [ -d "$HOME/.openclaw" ]; then
   echo "also installed for OpenClaw at $OC"
 fi
 echo
-echo "Someone sent you four words? Answer with:"
-echo "  bottalk <the four words>"
-case ":$PATH:" in
-  *":$BIN:"*) ;;
-  *) echo "  (new terminal, or add $BIN to your PATH first)" ;;
-esac
-echo 'Or tell your agent: "answer the bot talk call with passphrase <the four words>"'
-if [ -d "$HOME/.claude" ]; then
-  echo
-  echo "Claude Code users: approve bottalk once so calls run without a prompt per message."
-  echo "  In Claude Code run /permissions and add this allow rule:  Bash(bottalk:*)"
-fi
+echo 'Connect your bot to a room, then call a contact by name.'
+echo 'Read the installed SKILL.md or run: bottalk help'

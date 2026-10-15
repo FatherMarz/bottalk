@@ -1,6 +1,9 @@
 import { neon } from "@neondatabase/serverless";
 
-type SqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<Record<string, unknown>[]>;
+type SqlTag = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Record<string, unknown>[]>;
 
 // Prod: Neon's HTTP driver (one fetch per query, right for serverless).
 // DEV_PG=1: plain TCP postgres for local verification - the Neon driver
@@ -14,7 +17,10 @@ function makeSql(): SqlTag {
         const Pool = (pg.default ?? pg).Pool;
         pool = new Pool({ connectionString: process.env.DATABASE_URL });
       }
-      const text = strings.reduce((acc, s, i) => acc + (i > 0 ? `$${i}` : "") + s, "");
+      const text = strings.reduce(
+        (acc, s, i) => acc + (i > 0 ? `$${i}` : "") + s,
+        "",
+      );
       const res = await pool.query(text, values as unknown[]);
       return res.rows as Record<string, unknown>[];
     };
@@ -29,30 +35,6 @@ export const sql = makeSql();
 let schemaReady: Promise<unknown> | null = null;
 export function ensureSchema(): Promise<unknown> {
   schemaReady ??= (async () => {
-    await sql`
-      CREATE TABLE IF NOT EXISTS calls (
-        code        text PRIMARY KEY,
-        intro       text NOT NULL,
-        created_at  timestamptz NOT NULL DEFAULT now(),
-        answered_at timestamptz,
-        ended_at    timestamptz,
-        caller_seen timestamptz NOT NULL DEFAULT now(),
-        callee_seen timestamptz,
-        msg_count   int NOT NULL DEFAULT 0
-      )
-    `;
-    await sql`
-      CREATE TABLE IF NOT EXISTS messages (
-        id         bigserial PRIMARY KEY,
-        code       text NOT NULL REFERENCES calls(code) ON DELETE CASCADE,
-        from_role  text NOT NULL CHECK (from_role IN ('caller','callee')),
-        seq        int NOT NULL,
-        body       text NOT NULL,
-        created_at timestamptz NOT NULL DEFAULT now()
-      )
-    `;
-    await sql`CREATE UNIQUE INDEX IF NOT EXISTS messages_code_role_seq ON messages (code, from_role, seq)`;
-    await sql`CREATE INDEX IF NOT EXISTS messages_code_id ON messages (code, id)`;
     await sql`
       CREATE TABLE IF NOT EXISTS walls (
         id         text PRIMARY KEY,
@@ -76,6 +58,19 @@ export function ensureSchema(): Promise<unknown> {
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS wall_notes_wall_client ON wall_notes (wall_id, client_id)`;
     await sql`CREATE INDEX IF NOT EXISTS wall_notes_wall ON wall_notes (wall_id, id)`;
     await sql`
+      CREATE TABLE IF NOT EXISTS approvals (
+        id text PRIMARY KEY,
+        room_id text NOT NULL REFERENCES walls(id) ON DELETE CASCADE,
+        token_hash text NOT NULL,
+        decline_hash text NOT NULL,
+        receipt text,
+        ct text NOT NULL,
+        status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'declined')),
+        expires_at timestamptz NOT NULL,
+        decided_at timestamptz
+      )
+    `;
+    await sql`
       CREATE TABLE IF NOT EXISTS stats (
         day            date PRIMARY KEY,
         visits         int NOT NULL DEFAULT 0,
@@ -91,24 +86,10 @@ export function ensureSchema(): Promise<unknown> {
   return schemaReady;
 }
 
-/** Reap dead calls (messages follow via FK cascade). Runs opportunistically
- *  on call creation - no cron. A call may ring unanswered for 30 minutes
- *  (the human has to text the passphrase over); an ended call lingers 10
- *  minutes so the peer sees "ended" instead of a bare 404. */
-export function sweepCalls(): Promise<unknown> {
-  return sql`
-    DELETE FROM calls
-    WHERE (answered_at IS NULL AND created_at < now() - interval '30 minutes')
-       OR (ended_at IS NOT NULL AND ended_at < now() - interval '10 minutes')
-       OR GREATEST(caller_seen, COALESCE(callee_seen, 'epoch'::timestamptz)) < now() - interval '30 minutes'
-       OR created_at < now() - interval '6 hours'
-  `;
-}
-
 /** Anonymous daily counters. Explicit per-field statements because both SQL
  *  drivers are tagged templates (no identifier interpolation). Never throws:
- *  telemetry must not break a call. */
-export type StatField = "visits" | "installs" | "calls_created" | "calls_answered";
+ *  telemetry must not interrupt the room. */
+export type StatField = "visits" | "installs";
 export function bumpStat(field: StatField): Promise<unknown> {
   const q: Record<StatField, () => Promise<unknown>> = {
     visits: () =>
@@ -117,12 +98,6 @@ export function bumpStat(field: StatField): Promise<unknown> {
     installs: () =>
       sql`INSERT INTO stats (day, installs) VALUES (current_date, 1)
           ON CONFLICT (day) DO UPDATE SET installs = stats.installs + 1`,
-    calls_created: () =>
-      sql`INSERT INTO stats (day, calls_created) VALUES (current_date, 1)
-          ON CONFLICT (day) DO UPDATE SET calls_created = stats.calls_created + 1`,
-    calls_answered: () =>
-      sql`INSERT INTO stats (day, calls_answered) VALUES (current_date, 1)
-          ON CONFLICT (day) DO UPDATE SET calls_answered = stats.calls_answered + 1`,
   };
   return q[field]().catch(() => {});
 }
@@ -135,12 +110,4 @@ export function sweepWalls(): Promise<unknown> {
     DELETE FROM walls
     WHERE saved_at IS NULL AND last_seen < now() - interval '7 days'
   `;
-}
-
-/** Call codes are client-derived opaque tokens - hex of an HKDF over the
- *  passphrase. The passphrase itself never reaches the server. */
-export function normalizeCode(input: unknown): string | null {
-  if (typeof input !== "string") return null;
-  const code = input.trim().toLowerCase();
-  return /^[a-f0-9]{32}$/.test(code) ? code : null;
 }

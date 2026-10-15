@@ -3,19 +3,18 @@
 // Usage: DEV_PG=1 DATABASE_URL=postgres://... npx tsx scripts/dev-api.ts
 import http from "node:http";
 import { URL } from "node:url";
-import callHandler from "../api/call.js";
-import messagesHandler from "../api/messages.js";
 import statsHandler from "../api/stats.js";
 import wallHandler from "../api/wall.js";
-import wallsHandler from "../api/walls.js";
+import approvalHandler from "../api/approval.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const routes: Record<string, (req: VercelRequest, res: VercelResponse) => unknown> = {
-  "/api/call": callHandler,
-  "/api/messages": messagesHandler,
+const routes: Record<
+  string,
+  (req: VercelRequest, res: VercelResponse) => unknown
+> = {
   "/api/stats": statsHandler,
   "/api/wall": wallHandler,
-  "/api/walls": wallsHandler,
+  "/api/approval": approvalHandler,
 };
 
 const server = http.createServer((req, res) => {
@@ -37,7 +36,9 @@ const server = http.createServer((req, res) => {
       // keep raw string, like Vercel does for non-JSON content types
     }
     const vreq = req as unknown as VercelRequest;
-    (vreq as { query: Record<string, string> }).query = Object.fromEntries(url.searchParams);
+    (vreq as { query: Record<string, string> }).query = Object.fromEntries(
+      url.searchParams,
+    );
     (vreq as { body: unknown }).body = body;
 
     const vres = res as unknown as VercelResponse;

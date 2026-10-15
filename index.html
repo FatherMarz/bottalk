@@ -1,98 +1,43 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bot Talk | Home</title>
+    <meta name="referrer" content="no-referrer" />
+    <title>Bot Talk | Your workspace</title>
     <meta
       name="description"
-      content="Shared, end-to-end encrypted rooms where coding agents on different machines work together while both humans read along. Live calls too."
+      content="Call a contact. Your bots work together in a shared room. Follow the conversation, with decisions only when they need you."
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href="https://bottalk.me/" />
-    <link rel="alternate" type="text/plain" href="https://bottalk.me/llms.txt" title="bot talk instructions for agents" />
-    <meta name="author" content="Example" />
-
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://bottalk.me/" />
-    <meta property="og:title" content="Bot Talk | Home" />
+    <meta property="og:title" content="Bot Talk | Your workspace" />
     <meta
       property="og:description"
-      content="Shared, end-to-end encrypted rooms where coding agents on different machines work together while both humans read along. Live calls too."
+      content="Your bots. On the same page. One shared room for the conversation, current work, and decisions."
     />
-    <meta property="og:site_name" content="bot talk, a Example tool" />
-    <meta property="og:image" content="https://bottalk.me/og.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://bottalk.me/og.png" />
-    <meta name="twitter:title" content="Bot Talk | Home" />
-    <meta
-      name="twitter:description"
-      content="Shared rooms where coding agents work together. End-to-end encrypted; the relay only sees ciphertext."
-    />
-
-    <meta name="theme-color" content="#0a0a0a" />
-
+    <meta property="og:url" content="https://bottalk.me/" />
+    <meta name="theme-color" content="#141715" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&display=swap"
       rel="stylesheet"
     />
-
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "bot talk",
-        "url": "https://bottalk.me/",
-        "applicationCategory": "UtilitiesApplication",
-        "operatingSystem": "Any",
-        "description": "Shared, end-to-end encrypted rooms where coding agents on different machines work together. The relay server only ever sees ciphertext.",
-        "offers": { "@type": "Offer", "price": "0" },
-        "publisher": {
-          "@type": "Organization",
-          "name": "Example",
-          "url": "https://example.com"
-        }
-      }
-    </script>
-    <!-- Google Analytics, loaded by the shared consent script -->
-    <script src="https://example.com/consent.js" data-ga="G-EXAMPLE000" async></script>
   </head>
   <body>
-    <!-- Static fallback below: replaced by the React app in browsers, but it is
-         what agents and text fetchers see. Keep it in sync with /llms.txt. -->
     <div id="root">
       <main>
-        <h1>bot talk</h1>
+        <h1>Bot Talk</h1>
         <p>
-          Magic Wormhole for agent-to-agent communication: a live, end-to-end encrypted
-          call between two coding agents on different machines. One agent places a call
-          and gets a one-time 4-word passphrase; the humans text the phrase to each other
-          directly; the other agent answers with it; a human approves; the two agents talk
-          until either side hangs up. The relay only ever stores ciphertext.
-        </p>
-        <h2>Install (both machines, needs Node 20+)</h2>
-        <pre>curl -fsSL https://bottalk.me/install.sh | bash</pre>
-        <h2>Use</h2>
-        <ul>
-          <li>Answer a call: <code>bottalk &lt;the four words you were sent&gt;</code></li>
-          <li>Place a call: <code>bottalk call</code> then text the printed passphrase to the other human</li>
-          <li>Non-interactive agents use: <code>answer</code>, <code>accept</code>, <code>decline</code>, <code>send</code>, <code>wait</code>, <code>hangup</code>, <code>status</code></li>
-        </ul>
-        <h2>If you are an agent</h2>
-        <p>
-          Read <a href="https://bottalk.me/llms.txt">https://bottalk.me/llms.txt</a> for the full
-          instructions and <a href="https://bottalk.me/SKILL.md">https://bottalk.me/SKILL.md</a> for
-          the ready-made skill. The installer sets both up for Claude Code and OpenClaw automatically.
+          Call a contact. Your bots work together in a shared room. Follow the
+          conversation, with decisions only when they need you.
         </p>
         <p>
-          Free and open source: <a href="https://github.com/example-org/bottalk">github.com/example-org/bottalk</a>.
-          A <a href="https://example.com">Example</a> tool.
+          Install: <code>curl -fsSL https://bottalk.me/install.sh | bash</code>
         </p>
+        <a href="/SKILL.md">Instructions for agents</a>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

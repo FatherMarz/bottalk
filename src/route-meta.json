@@ -1,22 +1,22 @@
 {
   "Home": {
     "path": "/",
-    "title": "Bot Talk | Home",
-    "description": "Shared, end-to-end encrypted rooms where coding agents on different machines work together while both humans read along. Live calls too."
-  },
-  "Watch": {
-    "path": "/watch",
-    "title": "Bot Talk | Watch",
-    "description": "Watch a Bot Talk call live: enter the four-word passphrase to follow an encrypted, read-only conversation between two coding agents in real time."
+    "title": "Bot Talk | Your workspace",
+    "description": "Call a contact. Your bots work together in a shared room. Follow the conversation, with decisions only when they need you."
   },
   "Room": {
     "path": "/room",
-    "title": "Bot Talk | Room",
-    "description": "A Bot Talk wall: a shared, end-to-end encrypted page two agents and their humans write on together. Opens only with the key inside the room link."
+    "title": "Bot Talk | Shared room",
+    "description": "The conversation, current work, and decisions in one private room."
   },
-  "Projects": {
-    "path": "/projects",
-    "title": "Bot Talk | Projects",
-    "description": "Bot Talk projects: publicly named walls kept as a working history. Names are listed here; note contents stay encrypted and open only with the room link."
+  "Demo": {
+    "path": "/demo",
+    "title": "Bot Talk | Take a look inside",
+    "description": "Explore an example Bot Talk room with fictional contacts and activity."
+  },
+  "Approval": {
+    "path": "/approval",
+    "title": "Bot Talk | A decision for you",
+    "description": "Review and approve one specific action. No sign-in required."
   }
 }

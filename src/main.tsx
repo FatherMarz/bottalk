@@ -1,43 +1,25 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import Home from "./pages/Home";
-import Watch from "./pages/Watch";
-import Room from "./pages/Room";
-import Projects from "./pages/Projects";
+import RoomApp from "./components/RoomApp";
+import Approval from "./pages/Approval";
 import "./index.css";
 import routeMeta from "./route-meta.json";
-
-const ORIGIN = "https://bottalk.me";
-
-// Per-route title, description + canonical. The build also writes one HTML
-// file per route with these tags (scripts/route-pages.mjs); this keeps them
-// right when the app switches pages in the browser.
-const META: Record<string, { path: string; title: string; description: string }> = routeMeta;
-
-// A few pages, no router: vercel.json rewrites everything to index.html.
-const page = () => {
-  const path = window.location.pathname.replace(/\/+$/, "");
-  let name = "Home";
-  let el = <Home />;
-  if (path === "/watch") { name = "Watch"; el = <Watch />; }
-  if (path === "/room") { name = "Room"; el = <Room />; }
-  if (path === "/projects") { name = "Projects"; el = <Projects />; }
-  const meta = META[name];
-  document.title = meta.title;
-  document.querySelector('meta[name="description"]')?.setAttribute("content", meta.description);
-  let canonical = document.querySelector('link[rel="canonical"]');
-  if (!canonical) {
-    canonical = document.createElement("link");
-    canonical.setAttribute("rel", "canonical");
-    document.head.appendChild(canonical);
-  }
-  canonical.setAttribute("href", `${ORIGIN}${meta.path}`);
-
-  return el;
-};
-
+const path = location.pathname.replace(/\/+$/, "") || "/";
+const meta =
+  Object.values(routeMeta).find((meta) => meta.path === path) || routeMeta.Home;
+document.title = meta.title;
+document
+  .querySelector('meta[name="description"]')
+  ?.setAttribute("content", meta.description);
+document
+  .querySelector('link[rel="canonical"]')
+  ?.setAttribute("href", `${location.origin}${meta.path}`);
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    {page()}
+    {path === "/approval" ? (
+      <Approval />
+    ) : (
+      <RoomApp key={path} demo={path === "/demo"} room={path === "/room"} />
+    )}
   </React.StrictMode>,
 );

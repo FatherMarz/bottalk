@@ -1,14 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { sql, ensureSchema, sweepWalls } from "./_lib/db.js";
 
-/** A wall is a shared scratch space for a call's participants (and any
- *  human who opens the room link). The server only ever sees room ids and
- *  ciphertext envelopes: the key rides in the link's URL fragment and never
- *  reaches the server, so `bottalk.me/room#<id>.<key>` is both the address
- *  and the secret. */
+/** Encrypted room transport. Keys stay in participant devices and URL fragments.
+ * Table and envelope names remain compatible with version 1 room invitations. */
 
 const MAX_NOTE_CHARS = 16384; // per-note ciphertext cap, same scale as calls
-const MAX_NOTES_PER_WALL = 500; // personal tool backstop
+const MAX_NOTES_PER_WALL = 5000; // personal tool backstop
 const ID_RE = /^[a-f0-9]{24}$/; // client-generated room id
 const CLIENT_ID_RE = /^[a-f0-9-]{8,64}$/; // client-generated note id
 
@@ -18,7 +15,9 @@ function parseBody(req: VercelRequest): Record<string, unknown> {
     return body as Record<string, unknown>;
   }
   try {
-    return JSON.parse(Buffer.isBuffer(body) ? body.toString("utf8") : String(body ?? ""));
+    return JSON.parse(
+      Buffer.isBuffer(body) ? body.toString("utf8") : String(body ?? ""),
+    );
   } catch {
     return {};
   }
@@ -29,15 +28,17 @@ type NoteRow = { client_id: string; ct: string; deleted: boolean };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method" });
+  res.setHeader("cache-control", "no-store");
   await ensureSchema();
   const body = parseBody(req);
-  const id = typeof body.id === "string" && ID_RE.test(body.id) ? body.id : null;
+  const id =
+    typeof body.id === "string" && ID_RE.test(body.id) ? body.id : null;
   if (!id) return res.status(400).json({ error: "bad id" });
 
   if (body.action === "create") {
     await sweepWalls();
     const rows = await sql`
-      INSERT INTO walls (id) VALUES (${id})
+      INSERT INTO walls (id, saved_at) VALUES (${id}, now())
       ON CONFLICT (id) DO NOTHING
       RETURNING id
     `;
@@ -70,16 +71,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const notes = Array.isArray(body.notes) ? body.notes : null;
   if (body.action === "post") {
-    if (!Array.isArray(notes) || notes.length === 0) return res.status(400).json({ error: "bad notes" });
+    if (!Array.isArray(notes) || notes.length === 0)
+      return res.status(400).json({ error: "bad notes" });
     for (const n of notes) {
       if (typeof n?.client_id !== "string" || !CLIENT_ID_RE.test(n.client_id)) {
         return res.status(400).json({ error: "bad note id" });
       }
-      if (typeof n?.ct !== "string" || n.ct.length === 0 || n.ct.length > MAX_NOTE_CHARS) {
+      if (
+        typeof n?.ct !== "string" ||
+        n.ct.length === 0 ||
+        n.ct.length > MAX_NOTE_CHARS
+      ) {
         return res.status(400).json({ error: "bad ct" });
       }
     }
-    const count = await sql`SELECT count(*)::int AS n FROM wall_notes WHERE wall_id = ${id} AND NOT deleted`;
+    const count =
+      await sql`SELECT count(*)::int AS n FROM wall_notes WHERE wall_id = ${id} AND NOT deleted`;
     if (Number(count[0]?.n ?? 0) + notes.length > MAX_NOTES_PER_WALL) {
       return res.status(413).json({ error: "full" });
     }
@@ -95,7 +102,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (body.action === "delete") {
-    const client_id = typeof body.client_id === "string" && CLIENT_ID_RE.test(body.client_id) ? body.client_id : null;
+    const client_id =
+      typeof body.client_id === "string" && CLIENT_ID_RE.test(body.client_id)
+        ? body.client_id
+        : null;
     if (!client_id) return res.status(400).json({ error: "bad note id" });
     await sql`
       UPDATE wall_notes SET deleted = true, updated_at = now()
@@ -106,7 +116,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (body.action === "save") {
-    const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
+    const name =
+      typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
     if (!name) return res.status(400).json({ error: "bad name" });
     await sql`
       UPDATE walls SET name = ${name}, saved_at = COALESCE(saved_at, now()), last_seen = now()

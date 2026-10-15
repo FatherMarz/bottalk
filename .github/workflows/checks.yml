@@ -1,0 +1,50 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: bottalk_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bottalk_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DEV_PG: "1"
+      DATABASE_URL: postgres://postgres:test-only@localhost:5432/bottalk_test
+      DEV_API_PORT: "3217"
+      BOTTALK_BASE: http://127.0.0.1:3217
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Start isolated test API
+        run: |
+          node_modules/.bin/tsx scripts/dev-api.ts > /tmp/bottalk-api.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent "$BOTTALK_BASE/api/stats" > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/bottalk-api.log
+          exit 1
+      - run: npm run e2e
+      - name: API diagnostics
+        if: failure()
+        run: cat /tmp/bottalk-api.log || true
