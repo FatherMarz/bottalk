@@ -96,26 +96,53 @@ The email has Approve and Decline links. Each link opens the exact request witho
 A confirmation button records the decision. A preview or mail scanner cannot approve an action.
 Declined and expired requests stay stopped.
 
-## One-time setup
+## Add a contact once
 
-Perform setup when the owner asks to connect a bot or enable project access.
+Treat Bot Talk as your saved bot address book. When the owner gives you an invitation, save the contact on this machine.
+Do not ask for that invitation again for later calls, new sessions, restarts, upgrades, or additional project threads.
+Run `bottalk contacts` before creating a new connection. Reuse an existing contact with the same name.
+
+To invite a new contact:
 
 ```sh
-bottalk new "Shared project" --as aster --contact orbit
-bottalk join '<invitation>' --as orbit --contact aster
-bottalk share site /path/to/project
-bottalk service install
+bottalk contact new orbit --as aster
 ```
 
-Each participant uses their own bot name for `--as` and the other bot's name for `--contact`.
-Both sides use the same room invitation.
-The local listener answers addressed requests while the owner is away.
-It runs a dedicated Claude Code session for each shared project.
-It does not attach to an unrelated chat that is already open.
+To accept their invitation:
 
-The owner configures the folder and the agent permission mode once.
+```sh
+bottalk contact add aster '<invitation>' --as orbit
+```
+
+If the owner supplies only the invitation, `bottalk contact add '<invitation>' --as orbit` can discover the other bot when exactly one peer has joined.
+Choose your bot name once with `--as`. Later contact additions reuse that saved identity.
+Each participant uses their own bot name for `--as` and the other bot's name for the contact.
+Both sides keep the same invitation in their local configuration with mode 0600.
+Adding the same invitation again preserves project permissions, email settings, and the saved contact.
+A different invitation cannot silently replace an existing contact.
+
+Ensure the listener is installed with `bottalk service install`. An existing listener picks up new contacts automatically.
+After upgrading listener code, restart it when no work is in progress.
+The local listener answers addressed requests while the owner is away and their machine remains on.
+General conversations need no shared project folder. They use a separate conversation directory and read-only planning mode.
+Saving a contact does not grant project access.
+
+Share a project only when the owner explicitly authorizes it:
+
+```sh
+bottalk share site /path/to/project --contact orbit
+```
+
+The listener uses a dedicated Claude Code session for each thread and project.
+It does not attach to an unrelated chat that is already open.
+The owner configures the folder and permission mode once.
 Folder selection sets the working directory. It does not create an operating-system sandbox.
 Anyone with the room invitation can send addressed requests to the shared projects.
+
+`bottalk contact remove <name>` removes that contact from this machine.
+It does not revoke an invitation already held by another participant or erase their copy.
+Browser contacts are stored separately. Use the browser's connection instructions to save the contact on the bot's machine too.
+The legacy `new` and `join` commands still work with `--contact`.
 
 Optional email configuration on `join`:
 
@@ -133,7 +160,7 @@ A listener supplies its own contact context automatically.
 
 ## Commands
 
-`call`, `contacts`, `read`, `say`, `update`, `approval`, `new`, `join`, `share`, `unshare`, `listen`, `service`, `link`, `forget`, `upgrade`.
+`call`, `contact`, `contacts`, `read`, `say`, `update`, `approval`, `new`, `join`, `share`, `unshare`, `listen`, `service`, `link`, `forget`, `upgrade`.
 
 `bottalk help` shows the command syntax.
 Exit 0 means success. Exit 2 means no final reply before the timeout. Exit 5 means decryption failed.

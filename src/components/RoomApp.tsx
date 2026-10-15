@@ -1,3 +1,4 @@
+import ContactSetup from "./ContactSetup";
 import { Avatar, Mark } from "./Identity";
 import {
   useEffect,
@@ -27,14 +28,7 @@ import {
   type RoomRef,
 } from "@/lib/room";
 
-type DialogName =
-  | "new"
-  | "join"
-  | "contact"
-  | "setup"
-  | "name"
-  | "thread"
-  | null;
+type DialogName = "new" | "join" | "contact" | "name" | "thread" | null;
 function Modal({
   title,
   close,
@@ -126,6 +120,9 @@ export default function RoomApp({
     setDrafts((previous) => ({ ...previous, [draftKey]: value }));
   const [sending, setSending] = useState(false);
   const [dialog, setDialog] = useState<DialogName>(null);
+  const [contactToConnect, setContactToConnect] = useState<
+    Contact | undefined
+  >();
   const [value, setValue] = useState("");
   const [second, setSecond] = useState("");
   const [busy, setBusy] = useState(false);
@@ -145,6 +142,12 @@ export default function RoomApp({
   const currentThread = threads.find((thread) => thread.id === selectedThread);
   const visibleEvents = eventsInThread(events, selectedThread);
   const title = currentThread?.name || "Thread unavailable";
+  const otherRooms = Object.entries(saved).filter(
+    ([, item]) =>
+      !contacts.some(
+        (contact) => contact.url.split("&")[0] === item.url.split("&")[0],
+      ),
+  );
   const switchThread = (id: string) => {
     setSelectedThread(id);
     setReply(null);
@@ -242,8 +245,20 @@ export default function RoomApp({
         ];
         if (peers.length)
           setContacts((previous) => {
-            const merged = [...previous];
-            for (const name of peers)
+            const own = previous.find(
+              (contact) => contact.url === roomUrl(ref) && contact.me,
+            )?.me;
+            const merged = previous.filter(
+              (contact) =>
+                !(
+                  own &&
+                  contact.url === roomUrl(ref) &&
+                  contact.name.toLowerCase() === own.toLowerCase()
+                ),
+            );
+            for (const name of peers.filter(
+              (name) => !own || name.toLowerCase() !== own.toLowerCase(),
+            ))
               if (
                 !merged.some((c) => c.name.toLowerCase() === name.toLowerCase())
               )
@@ -406,6 +421,7 @@ export default function RoomApp({
     setValue("");
     setSecond("");
     setError("");
+    setContactToConnect(undefined);
     setDialog(name);
   };
   const submitDialog = async (e: FormEvent) => {
@@ -451,17 +467,6 @@ export default function RoomApp({
         setAuthor(value.trim());
         writeLocal("bottalk-name", value.trim());
       }
-      if (dialog === "contact") {
-        const url = demo ? "/demo" : roomUrl(await parseRoom(second));
-        const next = [
-          ...contacts.filter(
-            (c) => c.name.toLowerCase() !== value.trim().toLowerCase(),
-          ),
-          { name: value.trim(), url },
-        ];
-        setContacts(next);
-        if (!demo) writeLocal("bottalk-contacts", next);
-      }
       setDialog(null);
     } catch (e) {
       setError((e as Error).message);
@@ -496,68 +501,72 @@ export default function RoomApp({
           <Mark />
           <span>bot talk</span>
         </a>
-        <div className="nav-section-heading">
-          {open ? "Threads" : "Your rooms"}
-          <button
-            className="icon-button"
-            aria-label={open ? "New thread" : "Create a room"}
-            onClick={() => openDialog(open ? "thread" : "new")}
-          >
-            +
-          </button>
-        </div>
-        <nav className="room-nav" aria-label={open ? "Threads" : "Rooms"}>
-          {open
-            ? threads.map((thread) => (
-                <button
-                  type="button"
-                  key={thread.id}
-                  className={`room-nav-item thread-item ${thread.id === selectedThread ? "selected" : ""}`}
-                  onClick={() => switchThread(thread.id)}
-                  aria-current={
-                    thread.id === selectedThread ? "page" : undefined
-                  }
-                >
-                  <span className="thread-symbol" aria-hidden="true">
-                    #
-                  </span>
-                  <span>
-                    {thread.name}
-                    {thread.project && <small>{thread.project}</small>}
-                  </span>
-                  {events.some(
-                    (event) =>
-                      event.thread === thread.id &&
-                      event.kind === "approval" &&
-                      !events.some(
-                        (result) =>
-                          result.re === event.clientId &&
-                          result.kind === "approval-result",
-                      ),
-                  ) && (
-                    <span
-                      className="thread-attention"
-                      aria-label="Approval pending"
-                    />
-                  )}
-                </button>
-              ))
-            : Object.entries(saved).map(([id, item]) => (
-                <a key={id} className="room-nav-item" href={item.url}>
-                  <span className="room-symbol">↗</span>
-                  <span>
-                    {item.name}
-                    <small>Shared room</small>
-                  </span>
-                </a>
-              ))}
-          {!open && !Object.keys(saved).length && (
-            <p className="nav-empty">No rooms yet.</p>
-          )}
-          <button className="nav-link" onClick={() => openDialog("join")}>
-            <span>↳</span> Join with an invitation
-          </button>
-        </nav>
+        {(open || otherRooms.length > 0) && (
+          <>
+            <div className="nav-section-heading">
+              {open ? "Threads" : "Other rooms"}
+              <button
+                className="icon-button"
+                aria-label={open ? "New thread" : "Create a room"}
+                onClick={() => openDialog(open ? "thread" : "new")}
+              >
+                +
+              </button>
+            </div>
+            <nav className="room-nav" aria-label={open ? "Threads" : "Rooms"}>
+              {open
+                ? threads.map((thread) => (
+                    <button
+                      type="button"
+                      key={thread.id}
+                      className={`room-nav-item thread-item ${thread.id === selectedThread ? "selected" : ""}`}
+                      onClick={() => switchThread(thread.id)}
+                      aria-current={
+                        thread.id === selectedThread ? "page" : undefined
+                      }
+                    >
+                      <span className="thread-symbol" aria-hidden="true">
+                        #
+                      </span>
+                      <span>
+                        {thread.name}
+                        {thread.project && <small>{thread.project}</small>}
+                      </span>
+                      {events.some(
+                        (event) =>
+                          event.thread === thread.id &&
+                          event.kind === "approval" &&
+                          !events.some(
+                            (result) =>
+                              result.re === event.clientId &&
+                              result.kind === "approval-result",
+                          ),
+                      ) && (
+                        <span
+                          className="thread-attention"
+                          aria-label="Approval pending"
+                        />
+                      )}
+                    </button>
+                  ))
+                : otherRooms.map(([id, item]) => (
+                    <a key={id} className="room-nav-item" href={item.url}>
+                      <span className="room-symbol">↗</span>
+                      <span>
+                        {item.name}
+                        <small>Shared room</small>
+                      </span>
+                    </a>
+                  ))}
+              {!open && !Object.keys(saved).length && (
+                <p className="nav-empty">No rooms yet.</p>
+              )}
+              <button className="nav-link" onClick={() => openDialog("join")}>
+                <span>↳</span> Join with an invitation
+              </button>
+            </nav>
+          </>
+        )}
         <div className="nav-section-heading contacts-heading">
           Contacts
           <button
@@ -588,9 +597,9 @@ export default function RoomApp({
           {!contacts.length && <p className="nav-empty">No contacts yet.</p>}
         </div>
         <div className="sidebar-bottom">
-          <button className="nav-link" onClick={() => openDialog("setup")}>
-            <span>⌘</span> Connect your bot
-          </button>
+          <a className="nav-link" href="/guide.md">
+            <span>⌘</span> Setup guide
+          </a>
           <div className="profile">
             <button
               className="profile-name"
@@ -624,7 +633,7 @@ export default function RoomApp({
               ☰
             </button>
             <span className="room-symbol">↗</span>
-            <span>{open ? title : "Your workspace"}</span>
+            <span>{open ? title : "Your contacts"}</span>
             {demo && <span className="example-label">Interactive example</span>}
           </div>
           <div className="header-actions">
@@ -954,23 +963,58 @@ export default function RoomApp({
           </>
         ) : (
           <section className="welcome">
-            <h1>Your workspace</h1>
-            <p>Call a contact to work together in a shared room.</p>
+            <h1>Your contacts</h1>
+            <p>
+              Add a bot once. Call by name. Keep each project in its own thread.
+            </p>
             <div className="welcome-actions">
               <button
                 className="primary-button"
-                onClick={() => openDialog("new")}
+                onClick={() => openDialog("contact")}
               >
-                Create a room <span aria-hidden="true">↗</span>
+                Add a bot contact <span aria-hidden="true">↗</span>
               </button>
               <a className="quiet-button" href="/demo">
                 View example
               </a>
             </div>
-            {Object.entries(saved).length > 0 && (
+            {contacts.length > 0 && (
+              <div className="contact-book" aria-label="Saved bot contacts">
+                {contacts.map((contact) => (
+                  <article className="contact-book-card" key={contact.name}>
+                    <Avatar name={contact.name} bot />
+                    <div>
+                      <h2>
+                        <a href={contact.url}>{contact.name}</a>
+                      </h2>
+                      <p>
+                        {contact.me
+                          ? `Your bot: ${contact.me}`
+                          : "Saved contact"}
+                      </p>
+                    </div>
+                    <div className="contact-book-actions">
+                      <a href={contact.url} className="quiet-button">
+                        Open conversation ↗
+                      </a>
+                      <button
+                        className="quiet-button"
+                        onClick={() => {
+                          setContactToConnect(contact);
+                          setDialog("contact");
+                        }}
+                      >
+                        Connection instructions
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+            {otherRooms.length > 0 && (
               <div className="recent-rooms">
-                <h2>Recent rooms</h2>
-                {Object.entries(saved).map(([id, item]) => (
+                <h2>Other rooms</h2>
+                {otherRooms.map(([id, item]) => (
                   <a href={item.url} key={id}>
                     {item.name}
                     <span>Open room ↗</span>
@@ -997,43 +1041,33 @@ export default function RoomApp({
               new: "Create room",
               thread: "New thread",
               join: "Join room",
-              contact: "Add contact",
-              setup: "Connect your bot",
+              contact: contactToConnect
+                ? `Connect ${contactToConnect.name}`
+                : "Add a bot contact",
               name: "Your name",
             }[dialog]
           }
         >
-          {dialog === "setup" ? (
-            <div className="setup-content">
-              <p>Install Bot Talk on each machine.</p>
-              <div className="copy-command">
-                <code>curl -fsSL https://bottalk.me/install.sh | bash</code>
-                <button
-                  className="quiet-button"
-                  onClick={() =>
-                    void copy("curl -fsSL https://bottalk.me/install.sh | bash")
-                  }
-                >
-                  Copy
-                </button>
-              </div>
-              <p>
-                Give your bot the room link. Configure project access and email
-                locally.
-              </p>
-              <button
-                className="primary-button"
-                onClick={() =>
-                  ref
-                    ? void copy(roomUrl(ref))
-                    : setNotice(
-                        "Create a room first, then share its invitation with your bot.",
-                      )
+          {dialog === "contact" ? (
+            <ContactSetup
+              initial={contactToConnect}
+              contacts={contacts}
+              demo={demo}
+              onSaved={(contact) => {
+                const next = [
+                  ...contacts.filter(
+                    (item) =>
+                      item.name.toLowerCase() !== contact.name.toLowerCase(),
+                  ),
+                  contact,
+                ];
+                setContacts(next);
+                if (!demo) {
+                  writeLocal("bottalk-contacts", next);
+                  setSaved(rooms());
                 }
-              >
-                Copy room invitation
-              </button>
-            </div>
+              }}
+            />
           ) : (
             <form onSubmit={(e) => void submitDialog(e)}>
               <label className="field-label">
@@ -1043,9 +1077,7 @@ export default function RoomApp({
                     ? "Room name"
                     : dialog === "join"
                       ? "Invitation link"
-                      : dialog === "contact"
-                        ? "Bot name"
-                        : "Your name"}
+                      : "Your name"}
                 <input
                   autoFocus
                   required
@@ -1059,9 +1091,7 @@ export default function RoomApp({
                         ? "The project you’re working on"
                         : dialog === "join"
                           ? "https://…/room#…"
-                          : dialog === "contact"
-                            ? "Bot name"
-                            : "How you appear in the room"
+                          : "How you appear in the room"
                   }
                 />
               </label>
@@ -1076,27 +1106,14 @@ export default function RoomApp({
                   />
                 </label>
               )}
-              {dialog === "contact" && (
-                <label className="field-label">
-                  Shared room invitation
-                  <input
-                    required={!demo}
-                    value={second}
-                    onChange={(e) => setSecond(e.target.value)}
-                    placeholder="https://…/room#…"
-                  />
-                </label>
-              )}
               <p className="form-help">
                 {dialog === "thread"
                   ? "Separate conversation and context with the same contacts."
-                  : dialog === "contact"
-                    ? "Contacts stay on this device. Use the same bot name as the listener on their machine."
-                    : dialog === "new"
-                      ? "Invite your collaborator and both bots to the same room."
-                      : dialog === "name"
-                        ? "Your name is a display label, not a verified identity."
-                        : "The invitation includes the room key. Only share it with people you trust."}
+                  : dialog === "new"
+                    ? "Invite your collaborator and both bots to the same room."
+                    : dialog === "name"
+                      ? "Your name is a display label, not a verified identity."
+                      : "The invitation includes the room key. Only share it with people you trust."}
               </p>
               {error && (
                 <p className="error" role="alert">
@@ -1113,11 +1130,9 @@ export default function RoomApp({
                     ? "Create thread"
                     : dialog === "new"
                       ? "Create room"
-                      : dialog === "contact"
-                        ? "Save contact"
-                        : dialog === "join"
-                          ? "Open room"
-                          : "Save name"}
+                      : dialog === "join"
+                        ? "Open room"
+                        : "Save name"}
               </button>
             </form>
           )}

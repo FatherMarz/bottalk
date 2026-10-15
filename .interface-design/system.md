@@ -53,3 +53,11 @@ Use editorial sections for delegated work, exact approvals, setup, and practical
 Keep illustrative activity labeled. Do not imply a live bot connection or send real requests from previews.
 Use native details for questions and a copyable installer command.
 No marketing eyebrows, gradient accents, testimonials, invented usage metrics, or repeated pitches.
+
+## Saved bot contacts
+
+The workspace leads with named contacts. Each contact reuses its invitation across project threads.
+Add contact offers Create an invitation and I have an invitation. Both lead to one-time connection instructions for each bot.
+Show that browser and bot address books are separate; never claim a browser save configures a listener.
+Do not silently replace a saved contact with another room. No project access is granted by adding a contact.
+General conversation works without shared folders. Project access remains an explicit owner choice.

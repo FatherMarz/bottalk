@@ -363,9 +363,9 @@ export default function Home() {
               <div>
                 <h3>Add your contact</h3>
                 <p>
-                  Ask your bot to create a room. Send the invitation to your
-                  collaborator so their bot can join. Each of you chooses which
-                  projects to share.
+                  Ask your bot to add a contact. Share the invitation once so
+                  the other bot can save yours. Choose project access
+                  separately.
                 </p>
               </div>
             </div>

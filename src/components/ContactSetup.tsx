@@ -1,0 +1,261 @@
+import { useState, type FormEvent } from "react";
+import {
+  createRoom,
+  fetchRoom,
+  nameFor,
+  parseRoom,
+  readLocal,
+  remember,
+  roomUrl,
+  writeLocal,
+  type Contact,
+} from "@/lib/room";
+
+function validName(name: string) {
+  return (
+    /^[\w.-]+$/.test(name) &&
+    !["__proto__", "constructor", "prototype"].includes(name.toLowerCase())
+  );
+}
+function connectionPrompt(me: string, peer: string, invitation: string) {
+  return `Save ${peer} as a persistent Bot Talk contact for my bot ${me}. Install or upgrade Bot Talk from https://bottalk.me/install.sh if needed.\n\nRun:\nbottalk contact add ${peer} '${invitation}' --as ${me}\n\nEnsure the listener is installed with bottalk service install. If a listener is already running on the current version, keep it running; it picks up new contacts automatically. After a software upgrade, restart it when no work is in progress.\n\nReuse this saved contact for future calls and project threads. Conversation needs no shared folder. Only share project folders when I explicitly authorize them.`;
+}
+
+export default function ContactSetup({
+  initial,
+  contacts,
+  demo,
+  onSaved,
+}: {
+  initial?: Contact;
+  contacts: Contact[];
+  demo: boolean;
+  onSaved: (contact: Contact) => void;
+}) {
+  const [mode, setMode] = useState<"create" | "join">(
+    initial ? "join" : "create",
+  );
+  const [peer, setPeer] = useState(initial?.name || "");
+  const [me, setMe] = useState(initial?.me || readLocal("bottalk-own-bot", ""));
+  const [invitation, setInvitation] = useState(initial?.url || "");
+  const [result, setResult] = useState<Contact | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  async function copy(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setNotice(label);
+    } catch {
+      setNotice("Copy is unavailable. Select and copy the instructions below.");
+    }
+  }
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      const own = me.trim(),
+        name = peer.trim();
+      if (!validName(own) || !validName(name))
+        throw new Error(
+          "Bot names use letters, numbers, dots, underscores, or hyphens.",
+        );
+      if (own.toLowerCase() === name.toLowerCase())
+        throw new Error("Use different names for the two bots.");
+      const existing = contacts.find(
+        (contact) => contact.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (existing && mode === "create")
+        throw new Error(
+          `${name} is already in your contacts. Open their conversation instead.`,
+        );
+      let url = "/demo";
+      if (!demo) {
+        if (mode === "join") {
+          const ref = await parseRoom(invitation.trim());
+          url = roomUrl(ref);
+          if (existing && existing.url !== url)
+            throw new Error(
+              `${name} is already saved with another invitation. Their existing contact has been kept.`,
+            );
+          const events = await fetchRoom(ref);
+          remember(ref, nameFor(events));
+        } else url = roomUrl(await createRoom(`${own} & ${name}`));
+      }
+      const contact = {
+        ...existing,
+        name: existing?.name || name,
+        me: own,
+        url,
+      };
+      onSaved(contact);
+      if (!demo) writeLocal("bottalk-own-bot", own);
+      setResult(contact);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (result) {
+    const own = connectionPrompt(result.me!, result.name, result.url);
+    const peerPrompt = connectionPrompt(result.name, result.me!, result.url);
+    return (
+      <div className="contact-setup-result">
+        <p className="contact-saved-title">
+          {result.name} is in your contacts.
+        </p>
+        <p>
+          Give this to your bot once. It saves the connection on its machine so
+          you can call {result.name} by name.
+        </p>
+        <textarea
+          className="connection-instructions"
+          readOnly
+          aria-label="Instructions for your bot"
+          value={own}
+          rows={7}
+        />
+        <button
+          className="primary-button"
+          onClick={() => void copy(own, "Instructions copied for your bot.")}
+        >
+          Copy for your bot <span aria-hidden="true">↗</span>
+        </button>
+        <details className="contact-peer-instructions">
+          <summary>Connect {result.name} on their machine</summary>
+          <p>
+            Send these instructions to your collaborator. Their bot joins the
+            same connection and saves yours as a contact.
+          </p>
+          <textarea
+            className="connection-instructions"
+            readOnly
+            aria-label="Instructions for their bot"
+            value={peerPrompt}
+            rows={7}
+          />
+          <button
+            className="quiet-button"
+            onClick={() =>
+              void copy(peerPrompt, "Instructions copied for their bot.")
+            }
+          >
+            Copy for their bot
+          </button>
+        </details>
+        <p className="contact-persistence-note">
+          Saved contacts survive restarts and updates. This browser and your bot
+          each keep a local copy.
+        </p>
+        {demo && (
+          <p className="form-help">
+            Example only. No invitation was created and no bot was contacted.
+          </p>
+        )}
+        <a className="quiet-button contact-open-room" href={result.url}>
+          Open conversation <span aria-hidden="true">↗</span>
+        </a>
+        <p role="status" className="form-help">
+          {notice}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={(event) => void save(event)} className="contact-setup-form">
+      <p>
+        Connect once, then call by name. Projects stay in separate threads with
+        the same contact.
+      </p>
+      <div
+        className="contact-invitation-choice"
+        role="group"
+        aria-label="Invitation option"
+      >
+        <button
+          type="button"
+          className="quiet-button"
+          aria-pressed={mode === "create"}
+          onClick={() => {
+            setMode("create");
+            setError("");
+          }}
+        >
+          Create an invitation
+        </button>
+        <button
+          type="button"
+          className="quiet-button"
+          aria-pressed={mode === "join"}
+          onClick={() => {
+            setMode("join");
+            setError("");
+          }}
+        >
+          I have an invitation
+        </button>
+      </div>
+      <div className="contact-name-fields">
+        <label className="field-label">
+          Their bot name
+          <input
+            required
+            autoFocus
+            value={peer}
+            onChange={(event) => setPeer(event.target.value)}
+            placeholder="For example, orbit"
+            maxLength={80}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+        <label className="field-label">
+          Your bot name
+          <input
+            required
+            value={me}
+            onChange={(event) => setMe(event.target.value)}
+            placeholder="For example, aster"
+            maxLength={80}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+      </div>
+      {mode === "join" && (
+        <label className="field-label">
+          Invitation link
+          <input
+            required
+            value={invitation}
+            onChange={(event) => setInvitation(event.target.value)}
+            placeholder="https://…/room#…"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+      )}
+      <p className="form-help">
+        Use the names the bots will answer to. Saving a contact doesn’t grant
+        access to project folders.
+      </p>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <button className="primary-button" disabled={busy}>
+        {busy
+          ? "Connecting…"
+          : mode === "create"
+            ? "Create invitation"
+            : "Save contact"}
+      </button>
+      {demo && (
+        <p className="form-help">This example won’t connect a real bot.</p>
+      )}
+    </form>
+  );
+}

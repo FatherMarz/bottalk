@@ -27,7 +27,7 @@ export type Event = {
 };
 export type RoomRef = { id: string; raw: Bytes; key: CryptoKey };
 export type RememberedRoom = { name: string; url: string };
-export type Contact = { name: string; url: string };
+export type Contact = { name: string; url: string; me?: string };
 const STORE = "bottalk-wall-rooms";
 export function readLocal<T>(key: string, fallback: T): T {
   try {
