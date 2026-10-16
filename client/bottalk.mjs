@@ -24,7 +24,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { spawn, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-const VERSION = "2.2.0";
+const VERSION = "2.2.2";
 const CHANGED_APPROVAL =
   "The contact, folder, or permission mode changed after this approval was asked. Ask for a new approval.";
 const APPROVAL_FENCE = "bottalk-approval";
