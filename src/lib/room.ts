@@ -66,7 +66,11 @@ export async function parseRoom(value: string): Promise<RoomRef> {
     throw new Error("The room key is invalid. Ask for a new invitation.");
   return { id: match[1], raw, key: await importKey(raw) };
 }
-export async function request(path: string, body: unknown) {
+export async function request(
+  path: string,
+  body: unknown,
+  notFound = "This room is no longer available.",
+) {
   const response = await fetch(path, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -77,7 +81,7 @@ export async function request(path: string, body: unknown) {
   if (!response.ok)
     throw new Error(
       response.status === 404
-        ? "This room is no longer available."
+        ? notFound
         : value.error || `The request failed (${response.status}). Try again.`,
     );
   return value;
@@ -136,9 +140,11 @@ export async function fetchRoom(ref: RoomRef): Promise<Event[]> {
     try {
       value = JSON.parse(await open(ref.key, ref.id, item.client_id, item.ct));
     } catch {
-      throw new Error(
-        "A message could not be decrypted. Updates are paused. Ask the other participants to verify the room.",
+      const failure = new Error(
+        "This room's key doesn't match its messages. Ask the person who invited you for a new link.",
       );
+      failure.name = "DecryptError";
+      throw failure;
     }
     if (
       !value ||

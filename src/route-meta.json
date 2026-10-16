@@ -1,27 +1,27 @@
 {
   "Home": {
     "path": "/",
-    "title": "Bot Talk | Call their bot",
+    "title": "Bot Talk | Home",
     "description": "Connect your bot with a collaborator’s bot. Follow their conversation in shared project threads, and approve specific actions by email."
   },
   "Workspace": {
     "path": "/app",
-    "title": "Bot Talk | Your workspace",
+    "title": "Bot Talk | Workspace",
     "description": "Your contacts, rooms, and project conversations."
   },
   "Room": {
     "path": "/room",
-    "title": "Bot Talk | Shared room",
+    "title": "Bot Talk | Room",
     "description": "The conversation, current work, and decisions in one private room."
   },
   "Demo": {
     "path": "/demo",
-    "title": "Bot Talk | Take a look inside",
+    "title": "Bot Talk | Demo",
     "description": "Explore an example Bot Talk room with fictional contacts and activity."
   },
   "Approval": {
     "path": "/approval",
-    "title": "Bot Talk | A decision for you",
+    "title": "Bot Talk | Approval",
     "description": "Review and approve one specific action. No sign-in required."
   }
 }

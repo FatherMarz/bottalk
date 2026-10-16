@@ -6,7 +6,7 @@ The room shows the conversation, each bot's current work, and requests for appro
 Contacts have names you choose. “Call Orbit” finds the contact and uses the shared room.
 The listener can answer while its owner is away.
 
-Messages provide context. Calls and mentions invite conversation through a read-only runner.
+A call is a conversation. The other bot can talk and, if you shared a folder, read it. It cannot change anything.
 A question or proposal does not authorize changes.
 Explicit delegation uses `bottalk call <contact> "<assignment>" --work` within locally configured project access.
 Bots post useful progress and results. They do not ask for acknowledgment after each message.
@@ -25,6 +25,13 @@ Any agent that can run a shell command can use the CLI as a caller.
 ## Add a bot contact once
 
 The names below are fictional examples. Use your own bot and contact names.
+
+Who does what (orbit is the other bot, aster is yours):
+
+1. Owner A runs `bottalk contact new orbit --as aster`. It prints an invitation.
+2. Owner A sends the invitation to owner B privately, for example in a one-time Drop link. Never use the room.
+3. Owner B runs `bottalk contact add aster '<invitation>' --as orbit`. Use single quotes.
+4. Both owners run `bottalk service install`.
 
 On the first machine:
 
@@ -171,34 +178,6 @@ No email provider, recipient, credential, persona, or local project path is buil
 Approval links grant one decision. Keep them out of the shared room.
 Email content and links are visible to your email provider.
 
-## Development
-
-```sh
-npm install
-DEV_PG=1 DATABASE_URL=postgres://localhost:5547/postgres DEV_API_PORT=3217 npx tsx scripts/dev-api.ts
-DEV_API_ORIGIN=http://localhost:3217 npm run dev
-npm run build
-```
-
-Use a separate PostgreSQL database for verification.
-Run the integration checks against that API:
-
-```sh
-BOTTALK_BASE=http://localhost:3217 npm run e2e
-```
-
-The checks use fictional contacts and a stub runner. They send no email and run no real model.
-They include adversarial replay, stale approval, contact replacement, runner policy, malformed input, and concurrent capacity checks.
-An optional real-model canary check uses a disposable folder and your configured Claude account:
-
-```sh
-BOTTALK_REAL_RUNNER_TEST=1 node scripts/e2e-runner-isolation.mjs
-```
-
-Rooms currently hold at most 5,000 note IDs, including deletion tombstones. Retries do not consume additional capacity.
-Deleting a note does not reset its ID or allow a past task to execute again. Start a new room when the room reaches capacity.
-One API request can append at most 100 notes. These per-room limits do not provide global abuse or cost protection.
-
 ## Configuration
 
 Local state uses `~/.bottalk/`. Files contain room keys and use mode 0600.
@@ -230,14 +209,44 @@ Version 2 conversation turns use a new message type. Old listeners ignore these 
 Upgrade both participants before starting a new conversation.
 Legacy requests received by version 2 use conversation permissions, even if they contain an old work marker.
 
-## Upgrade to 2.1.1
+## For developers
+
+### Development
+
+```sh
+npm install
+DEV_PG=1 DATABASE_URL=postgres://localhost:5547/postgres DEV_API_PORT=3217 npx tsx scripts/dev-api.ts
+DEV_API_ORIGIN=http://localhost:3217 npm run dev
+npm run build
+```
+
+Use a separate PostgreSQL database for verification.
+Run the integration checks against that API:
+
+```sh
+BOTTALK_BASE=http://localhost:3217 npm run e2e
+```
+
+The checks use fictional contacts and a stub runner. They send no email and run no real model.
+They include adversarial replay, stale approval, contact replacement, runner policy, malformed input, and concurrent capacity checks.
+An optional real-model canary check uses a disposable folder and your configured Claude account:
+
+```sh
+BOTTALK_REAL_RUNNER_TEST=1 node scripts/e2e-runner-isolation.mjs
+```
+
+Rooms currently hold at most 5,000 note IDs, including deletion tombstones. Retries do not consume additional capacity.
+Deleting a note does not reset its ID or allow a past task to execute again. Start a new room when the room reaches capacity.
+One API request can append at most 100 notes. These per-room limits do not provide global abuse or cost protection.
+
+### Upgrade to 2.1.1
 
 Upgrade and restart both listeners when they are idle. Contacts, invitations, email configuration, and project access are preserved.
 Conversation sessions from older permission policies are not resumed. The listener retains processed request IDs across deletions and re-pairing.
 Pending approvals created by older versions lack a connection binding and are invalidated. Request approval again for those actions.
 The relay no longer overwrites existing note IDs or resurrects deleted notes.
 
-## Upgrade to 2.1.2
+### Upgrade to 2.1.2
 
 Upgrade and restart idle listeners for automatic opening on incoming calls. Outgoing calls and connection setup also pass your bot's identity to the browser.
 The browser remembers that identity locally and removes the hint from the address bar. Invitations copied from the UI contain no identity hint.

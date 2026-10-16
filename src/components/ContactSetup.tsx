@@ -174,6 +174,12 @@ export default function ContactSetup({
             {peerSetup ? "Copy for your bot" : "Copy for their bot"}
           </button>
         </details>
+        {!peerSetup && !demo && (
+          <p className="form-help">
+            Not connected yet. {result.name}’s bot joins when it runs these
+            instructions.
+          </p>
+        )}
         {!peerSetup && (
           <p className="contact-persistence-note">
             Saved contacts survive restarts and updates. This browser and your
@@ -217,7 +223,7 @@ export default function ContactSetup({
             setError("");
           }}
         >
-          Create an invitation
+          Start a new connection
         </button>
         <button
           type="button"
@@ -228,7 +234,7 @@ export default function ContactSetup({
             setError("");
           }}
         >
-          I have an invitation
+          Join with an invitation
         </button>
       </div>
       <div className="contact-name-fields">

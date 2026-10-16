@@ -98,7 +98,7 @@
   color: var(--moss);
 }
 .landing-hero-note {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
   margin: 20px 0 0;
 }
@@ -127,7 +127,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .landing-call > a:hover {
@@ -163,7 +163,7 @@
 }
 .landing-preview-label {
   color: var(--faint);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 450;
   margin-bottom: 13px;
 }
@@ -214,7 +214,7 @@
 }
 .landing-you {
   color: var(--faint);
-  font-size: 10px;
+  font-size: 12px;
 }
 .landing-conversation {
   min-width: 0;
@@ -232,7 +232,7 @@
 }
 .landing-conversation-heading > span:last-child {
   color: var(--faint);
-  font-size: 10px;
+  font-size: 12px;
 }
 .landing-message-list {
   padding: 28px 28px 18px;
@@ -250,7 +250,7 @@
   margin-top: 1px;
 }
 .landing-message strong {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 550;
 }
 .landing-message p {
@@ -263,7 +263,7 @@
   display: flex;
   gap: 9px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   margin: 2px 0 24px 45px;
 }
 .landing-progress > span {
@@ -279,7 +279,7 @@
   padding: 12px 14px;
   margin: 0 22px 22px;
   color: var(--faint);
-  font-size: 11px;
+  font-size: 12px;
 }
 .landing-preview-composer:hover {
   color: var(--ink);
@@ -313,12 +313,12 @@
   margin-right: 7px;
 }
 .landing-preview-work strong {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 .landing-preview-work p {
   grid-column: 1 / -1;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   color: var(--muted);
   margin: 15px 0 10px;
@@ -326,13 +326,13 @@
 .landing-work-done {
   grid-column: 1 / -1;
   color: var(--moss);
-  font-size: 10px;
+  font-size: 12px;
 }
 .landing-preview-caption {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
   padding: 17px 1px 0;
 }
@@ -380,7 +380,7 @@
   max-width: 400px;
 }
 .landing-intent-example small {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
   line-height: 1.7;
   display: block;
@@ -399,7 +399,7 @@
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   padding-bottom: 24px;
   border-bottom: 1px solid var(--line);
@@ -423,7 +423,7 @@
 .landing-email-context {
   display: flex;
   gap: 12px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
 }
 .landing-email-context > span + span {
@@ -448,7 +448,7 @@
 }
 .landing-email-note {
   color: var(--faint);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.7;
   margin: 22px 0 0;
   max-width: 330px;
@@ -475,7 +475,7 @@
   margin-bottom: 30px;
 }
 .landing-step-number {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
   width: 23px;
   height: 23px;
@@ -509,7 +509,7 @@
 }
 .landing-install code {
   font-family: ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   overflow-wrap: anywhere;
   user-select: all;
@@ -518,7 +518,7 @@
   color: var(--muted);
   background: transparent;
   border: 0;
-  font-size: 11px;
+  font-size: 12px;
   min-width: 39px;
   min-height: 28px;
   padding: 0;
@@ -527,7 +527,7 @@
   color: var(--ink);
 }
 .landing-copy-status {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .landing-setup-guide {
@@ -598,7 +598,7 @@
   font-size: 18px;
 }
 .landing-footer nav {
-  font-size: 11px;
+  font-size: 12px;
   gap: 25px;
 }
 .landing-footer nav a:last-child {
@@ -721,7 +721,7 @@
     padding: 20px;
   }
   .landing-conversation-heading > span:last-child {
-    font-size: 9px;
+    font-size: 12px;
   }
   .landing-message-list {
     padding: 24px 20px 8px;
@@ -746,13 +746,13 @@
   .landing-preview-composer {
     margin: 0 16px 16px;
     padding: 12px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .landing-preview-caption {
     flex-direction: column;
     gap: 6px;
     padding-top: 14px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .landing-story,
   .landing-approval-section {
@@ -797,7 +797,7 @@
     gap: 10px;
   }
   .landing-install code {
-    font-size: 10px;
+    font-size: 12px;
   }
   .landing-setup-guide {
     margin-left: 35px;

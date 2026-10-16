@@ -6,8 +6,8 @@
   --panel: #f0efea;
   --inset: #eeede7;
   --ink: #292e2a;
-  --muted: #72766e;
-  --faint: #9b9e95;
+  --muted: #5f635b;
+  --faint: #666a62;
   --line: #292e2a14;
   --moss: #405b47;
   --moss-wash: #e7ece3;
@@ -30,7 +30,7 @@
   --inset: #171d18;
   --ink: #e7e8df;
   --muted: #a0a99a;
-  --faint: #798474;
+  --faint: #93a08d;
   --line: #dce4cf14;
   --moss: #b4c7a8;
   --moss-wash: #29352b;
@@ -164,7 +164,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   text-transform: uppercase;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1.5px;
   color: var(--muted);
   font-weight: 650;
@@ -206,7 +206,7 @@ textarea {
 }
 .room-nav-item small {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--muted);
   margin-top: 4px;
@@ -271,7 +271,7 @@ textarea {
   overflow-wrap: anywhere;
 }
 .contact-row small {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   display: block;
   margin-top: 2px;
@@ -279,7 +279,7 @@ textarea {
 .contact-call {
   background: transparent;
   border: 0;
-  font-size: 11px;
+  font-size: 12px;
   min-height: 40px;
   color: var(--muted);
   padding: 5px;
@@ -307,7 +307,7 @@ textarea {
 .avatar-small {
   height: 29px;
   width: 29px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .avatar-bot {
   border-radius: 11px;
@@ -395,7 +395,7 @@ textarea {
 }
 .own-bot-choice small,
 .own-agent-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   font-weight: 400;
 }
@@ -431,14 +431,14 @@ textarea {
 }
 .bot-choice-option > span:last-child {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .theme-button {
   font-size: 20px;
 }
 .privacy-line {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--muted);
   margin: 14px 0 0;
@@ -492,7 +492,7 @@ textarea {
   background: var(--line);
 }
 .example-label {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -509,7 +509,7 @@ textarea {
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 1.6px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
 }
@@ -539,7 +539,7 @@ p {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   padding-bottom: 4px;
   white-space: nowrap;
@@ -574,11 +574,11 @@ p {
   justify-content: space-between;
   padding: 17px 40px 16px;
   gap: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 550;
 }
 .count {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--faint);
   margin-left: 5px;
 }
@@ -594,7 +594,7 @@ p {
 }
 .search input {
   width: 138px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--ink);
   border: 0;
   background: transparent;
@@ -617,7 +617,7 @@ p {
   align-items: center;
   gap: 15px;
   margin: 8px 0 30px;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--faint);
 }
 .day-divider:before,
@@ -648,7 +648,7 @@ p {
   font-weight: 650;
 }
 .bot-label {
-  font-size: 7px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
   letter-spacing: 0.7px;
@@ -657,12 +657,12 @@ p {
   padding: 2px 4px;
 }
 .message-heading time {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--faint);
   margin-left: 3px;
 }
 .message-text {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
   margin: 0;
   white-space: pre-wrap;
@@ -681,9 +681,9 @@ p {
   padding: 6px 0 0;
   min-height: 28px;
   background: transparent;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
-  opacity: 0;
+  opacity: 0.6;
 }
 .message:hover .reply-button,
 .reply-button:focus-visible {
@@ -694,19 +694,91 @@ p {
   gap: 9px;
   align-items: baseline;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
 }
 .progress-check {
   color: var(--moss);
-  font-size: 10px;
+  font-size: 12px;
 }
 .progress-author {
   font-weight: 600;
   color: var(--ink);
 }
+.progress-label {
+  font-weight: 600;
+  color: var(--moss);
+}
+.progress-time {
+  color: var(--faint);
+}
+.message-progress.is-refused {
+  color: var(--ink);
+  border-left: 3px solid var(--danger);
+  padding: 8px 12px;
+  background: var(--panel);
+  border-radius: 4px;
+}
+.message-progress.is-refused .progress-check,
+.message-progress.is-refused .progress-label {
+  color: var(--danger);
+}
+.reply-context-name {
+  color: var(--muted);
+}
+.request-reply {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.conversation-scroll:focus-visible {
+  outline: 2px solid var(--moss);
+  outline-offset: -2px;
+}
+p,
+small,
+li,
+.form-help,
+.nav-empty,
+.toast,
+.error,
+summary {
+  text-wrap: pretty;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+.link-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--moss);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.room-error-card {
+  max-width: 520px;
+  margin: 12vh auto;
+  padding: 28px;
+  background: var(--panel);
+  border-radius: 8px;
+}
+.room-error-card .welcome-actions {
+  margin-top: 18px;
+}
+.empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 14px;
+}
+.approval-actions .quiet-button {
+  min-height: 40px;
+}
 .request-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--moss);
   margin-bottom: 7px;
 }
@@ -718,14 +790,14 @@ p {
 }
 .approval-card .eyebrow {
   color: var(--amber);
-  font-size: 8px;
+  font-size: 12px;
 }
 .approval-card .message-text {
   margin-top: 9px;
   font-weight: 500;
 }
 .approval-status {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
   color: var(--amber);
   margin-top: 8px;
@@ -739,7 +811,7 @@ p {
 .approval-actions .primary-button,
 .approval-actions .quiet-button {
   min-height: 34px;
-  font-size: 10px;
+  font-size: 12px;
   padding: 7px 12px;
 }
 .primary-button {
@@ -794,7 +866,7 @@ p {
   gap: 10px;
 }
 .composer-bottom > span {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .send-button {
@@ -811,7 +883,7 @@ p {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font-size: 8px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 10px;
 }
@@ -819,7 +891,7 @@ p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   padding-left: 10px;
 }
@@ -836,7 +908,7 @@ p {
   margin: 10px 0;
 }
 .work-panel-top > p {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   color: var(--muted);
   margin: 0 0 30px;
@@ -853,10 +925,10 @@ p {
   flex-wrap: wrap;
 }
 .agent-work-heading strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 .work-status {
-  font-size: 8px;
+  font-size: 12px;
   color: var(--moss);
   margin-left: auto;
 }
@@ -864,12 +936,12 @@ p {
   color: var(--amber);
 }
 .agent-work > p {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.8;
   margin: 13px 0 6px;
 }
 .agent-work > time {
-  font-size: 8px;
+  font-size: 12px;
   color: var(--muted);
 }
 .work-empty {
@@ -898,7 +970,7 @@ p {
 }
 .room-note > span:last-child {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.8;
 }
@@ -933,7 +1005,7 @@ p {
   gap: 17px;
   align-items: center;
   margin-top: 100px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   color: var(--muted);
 }
@@ -950,7 +1022,7 @@ p {
   font-size: 13px;
 }
 .recent-rooms > a span {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .conversation-empty {
@@ -1028,7 +1100,7 @@ p {
   margin-bottom: 22px;
 }
 .error {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--danger);
   line-height: 1.6;
   margin: 8px 0 12px;
@@ -1043,13 +1115,13 @@ p {
   margin-bottom: 22px;
 }
 .copy-command code {
-  font-size: 11px;
+  font-size: 12px;
   overflow-wrap: anywhere;
   flex: 1;
 }
 .copy-command .quiet-button {
   padding: 6px 10px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .toast {
   position: fixed;
@@ -1102,7 +1174,7 @@ p {
   display: block;
   color: var(--muted);
   margin: 22px 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
 }
 @keyframes arrive {
@@ -1251,7 +1323,7 @@ p {
   }
   .breadcrumbs {
     gap: 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
   .breadcrumbs > .room-symbol {
     display: none;
@@ -1262,7 +1334,7 @@ p {
   .header-actions .quiet-button {
     padding: 7px 10px;
     min-height: 36px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .room-heading {
     padding: 28px 24px 22px;
@@ -1273,10 +1345,10 @@ p {
     margin-top: 12px;
   }
   .room-heading .eyebrow {
-    font-size: 8px;
+    font-size: 12px;
   }
   .room-heading p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .room-body {
     height: calc(100dvh - 240px);
@@ -1290,14 +1362,14 @@ p {
     padding-right: 20px;
   }
   .conversation-tools > span {
-    font-size: 10px;
+    font-size: 12px;
   }
   .search input {
     width: 125px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .day-divider {
-    font-size: 8px;
+    font-size: 12px;
     margin-bottom: 23px;
   }
   .message {
@@ -1305,7 +1377,7 @@ p {
     margin-bottom: 22px;
   }
   .message-text {
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.8;
   }
   .avatar {
@@ -1313,14 +1385,14 @@ p {
     width: 29px;
   }
   .message-heading strong {
-    font-size: 11px;
+    font-size: 12px;
   }
   .message-heading time {
-    font-size: 8px;
+    font-size: 12px;
   }
   .message-progress {
     margin-left: 39px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .reply-button {
     opacity: 1;
@@ -1333,13 +1405,13 @@ p {
     padding: 5px 18px 15px;
   }
   .composer-note {
-    font-size: 7px;
+    font-size: 12px;
   }
   .composer-note > span:last-child {
     display: none;
   }
   .composer-bottom > span {
-    font-size: 8px;
+    font-size: 12px;
   }
   .welcome {
     padding: 70px 26px 40px;
@@ -1358,7 +1430,7 @@ p {
     gap: 12px;
   }
   .welcome-actions .quiet-button {
-    font-size: 11px;
+    font-size: 12px;
   }
   .welcome-footnote {
     margin-top: 70px;
@@ -1448,7 +1520,7 @@ p {
   padding-top: 24px;
 }
 .approval-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--amber);
 }
@@ -1502,7 +1574,7 @@ p {
   margin-bottom: 24px;
 }
 .agent-work > p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .agent-work-heading strong {
   font-size: 12px;
@@ -1524,17 +1596,17 @@ p {
   color: #b6acbf;
 }
 .connection {
-  font-size: 10px;
+  font-size: 12px;
 }
 .approval-actions {
   margin-top: 14px;
 }
 .room-nav-item small,
 .contact-row small {
-  font-size: 10px;
+  font-size: 12px;
 }
 .reply-button {
-  font-size: 10px;
+  font-size: 12px;
 }
 .brand-mark i + i {
   background: var(--panel);
@@ -1567,10 +1639,10 @@ p {
     height: calc(100dvh - 154px);
   }
   .room-heading .connection {
-    font-size: 9px;
+    font-size: 12px;
   }
   .message-text {
-    font-size: 13px;
+    font-size: 14px;
   }
   .welcome h1 {
     font-size: 31px;
@@ -1651,7 +1723,7 @@ p {
   color: var(--moss);
 }
 .room-heading .thread-project {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.3;
   margin: 7px 0 0;
   color: var(--muted);
@@ -1721,7 +1793,7 @@ p {
   border: 1px solid var(--line);
   border-radius: 5px;
   font-family: ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.75;
   margin: 8px 0 16px;
 }
@@ -1740,7 +1812,7 @@ p {
   outline-offset: 5px;
 }
 .contact-setup-result .contact-persistence-note {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--faint);
   margin: 20px 0;
 }
@@ -1770,7 +1842,7 @@ p {
 .contact-book-card p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .contact-book-actions {
   margin-left: auto;
@@ -1780,7 +1852,7 @@ p {
   gap: 10px;
 }
 .contact-book-actions .quiet-button {
-  font-size: 11px;
+  font-size: 12px;
 }
 @media (max-width: 620px) {
   .contact-name-fields {

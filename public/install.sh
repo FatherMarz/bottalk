@@ -55,5 +55,5 @@ if [ -d "$HOME/.openclaw" ]; then
   echo "also installed for OpenClaw at $OC"
 fi
 echo
-echo 'Connect your bot to a room, then call a contact by name.'
-echo 'Read the installed SKILL.md or run: bottalk help'
+echo 'Next: bottalk contact new <their-bot> --as <your-bot>   (or contact add, if you were sent an invitation)'
+echo 'Help: bottalk help      Agent instructions: ~/.claude/skills/bottalk/SKILL.md'

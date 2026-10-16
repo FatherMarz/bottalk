@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { request } from "@/lib/room";
 import { b64urlDecode, importKey, open } from "@/lib/wallCrypto";
 type Details = {
@@ -10,9 +10,12 @@ type Details = {
 };
 export default function Approval() {
   const [details, setDetails] = useState<Details | null>(null);
-  const [status, setStatus] = useState("Loading request…");
+  const [status, setStatus] = useState("loading");
+  const [expiresAt, setExpiresAt] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const approveRef = useRef<HTMLButtonElement>(null);
+  const declineRef = useRef<HTMLButtonElement>(null);
   const [requestId, roomId, keyRaw, token, action] = location.hash
     .slice(1)
     .split(".");
@@ -24,10 +27,11 @@ export default function Approval() {
           throw new Error(
             "This approval link is incomplete. Ask for a new request.",
           );
-        const result = await request("/api/approval", {
-          action: "get",
-          id: requestId,
-        });
+        const result = await request(
+          "/api/approval",
+          { action: "get", id: requestId },
+          "This request is no longer available. Ask for a new one.",
+        );
         const key = await importKey(b64urlDecode(keyRaw));
         const decoded = JSON.parse(
           await open(key, roomId, requestId, result.ct),
@@ -47,6 +51,7 @@ export default function Approval() {
           );
         if (alive) {
           setDetails(decoded);
+          setExpiresAt(result.expiresAt || "");
           setStatus(
             result.status === "pending" &&
               Date.parse(result.expiresAt) < Date.now()
@@ -67,12 +72,11 @@ export default function Approval() {
     setBusy(true);
     setError("");
     try {
-      const result = await request("/api/approval", {
-        action: "decide",
-        id: requestId,
-        token,
-        decision,
-      });
+      const result = await request(
+        "/api/approval",
+        { action: "decide", id: requestId, token, decision },
+        "This request is no longer available. Ask for a new one.",
+      );
       setStatus(result.status);
     } catch (e) {
       setError((e as Error).message);
@@ -80,21 +84,50 @@ export default function Approval() {
       setBusy(false);
     }
   };
+  const broken = !details && !!error;
+  const heading = broken
+    ? "This approval link doesn't work"
+    : status === "approved"
+      ? "Approved"
+      : status === "declined"
+        ? "Declined"
+        : status === "expired"
+          ? "Request expired"
+          : status === "loading"
+            ? "Opening request"
+            : "Approval requested";
+  const pendingDecision = status === "pending" && !!details;
+  useEffect(() => {
+    document.title = `Bot Talk | ${
+      broken
+        ? "Link Problem"
+        : status === "approved"
+          ? "Approved"
+          : status === "declined"
+            ? "Declined"
+            : status === "expired"
+              ? "Request Expired"
+              : status === "loading"
+                ? "Opening Request"
+                : "Approval Requested"
+    }`;
+  }, [broken, status]);
+  useEffect(() => {
+    if (pendingDecision)
+      (action === "decline" ? declineRef : approveRef).current?.focus();
+  }, [pendingDecision, action]);
+  const expires = Date.parse(expiresAt);
+  const errorText =
+    error && !error.includes("Ask")
+      ? `${error} Ask the bot to send a new request.`
+      : error;
   return (
     <main className="approval-page">
       <div className="approval-review">
         <a href="/" className="brand">
           bot talk
         </a>
-        <h1>
-          {status === "approved"
-            ? "Approved"
-            : status === "declined"
-              ? "Declined"
-              : status === "expired"
-                ? "Request expired"
-                : "Approval requested"}
-        </h1>
+        <h1>{heading}</h1>
         {details && (
           <>
             <p>
@@ -111,28 +144,40 @@ export default function Approval() {
         )}
         {error && (
           <p className="error" role="alert">
-            {error}
+            {errorText}
           </p>
         )}
-        {status === "pending" && details && (
+        {pendingDecision && (
           <>
+            {!Number.isNaN(expires) && (
+              <p className="approval-expires">
+                Expires{" "}
+                {new Date(expires).toLocaleString([], {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            )}
             <small>
-              Your decision applies to this exact action. The bot can continue
-              after approval.
+              Approving lets {details!.author} do only the action above. It
+              can’t be reused.
             </small>
             <div className="approval-actions">
               <button
+                ref={approveRef}
                 className="primary-button"
                 disabled={busy}
-                onClick={() =>
-                  void decide(action === "decline" ? "declined" : "approved")
-                }
+                onClick={() => void decide("approved")}
               >
-                {busy
-                  ? "Saving…"
-                  : action === "decline"
-                    ? "Decline this action"
-                    : "Approve this action"}
+                {busy ? "Saving…" : "Approve"}
+              </button>
+              <button
+                ref={declineRef}
+                className="quiet-button"
+                disabled={busy}
+                onClick={() => void decide("declined")}
+              >
+                Decline
               </button>
             </div>
           </>
@@ -146,7 +191,7 @@ export default function Approval() {
                 : "Ask the bot to send a new request if the action is still needed."}
           </small>
         )}
-        {!details && !error && <p>{status}</p>}
+        {!details && !error && <p role="status">Loading request…</p>}
       </div>
     </main>
   );

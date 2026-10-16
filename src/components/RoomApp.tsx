@@ -14,6 +14,7 @@ import {
 } from "@/lib/contacts";
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
@@ -51,20 +52,24 @@ function Modal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
     ref.current?.showModal();
+    return () => opener?.focus?.();
   }, []);
   return (
     <dialog
       ref={ref}
       className="modal"
+      aria-labelledby={titleId}
       onCancel={close}
       onClick={(e) => {
         if (e.target === e.currentTarget) close();
       }}
     >
       <div className="modal-heading">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button
           className="icon-button"
           onClick={close}
@@ -190,7 +195,15 @@ export default function RoomApp({
   const threads = threadsFor(events);
   const currentThread = threads.find((thread) => thread.id === selectedThread);
   const visibleEvents = eventsInThread(events, selectedThread);
-  const title = currentThread?.name || "Thread unavailable";
+  const loadingRoom = room && !error && connection === "Opening room";
+  const badLink = room && !ref && !!error;
+  const title =
+    currentThread?.name ||
+    (room && !events.length
+      ? loadingRoom
+        ? "Opening room…"
+        : "Room"
+      : "Thread unavailable");
   const otherRooms = Object.entries(saved).filter(
     ([, item]) =>
       !contacts.some(
@@ -313,6 +326,10 @@ export default function RoomApp({
       } catch (e) {
         if (alive) {
           setError((e as Error).message);
+          if ((e as Error).name === "DecryptError") {
+            setConnection("Cannot read this room");
+            return;
+          }
           setConnection("Reconnecting");
         }
       }
@@ -466,7 +483,7 @@ export default function RoomApp({
         throw new Error("That's your bot. Choose another contact.");
       if (addressed.to && !demo && !contactHasJoined(events, addressed.to))
         throw new Error(
-          "That bot needs to connect with a current listener. Use Connect in Contacts.",
+          "That bot has not joined this room yet. Use Connect in Contacts.",
         );
       await publish({
         author: author || "You",
@@ -547,10 +564,10 @@ export default function RoomApp({
       setBusy(false);
     }
   };
-  const copy = async (text: string) => {
+  const copy = async (text: string, done = "Copied to clipboard") => {
     try {
       await navigator.clipboard.writeText(text);
-      setNotice("Copied to clipboard");
+      setNotice(done);
     } catch {
       setNotice(
         "Copy is unavailable in this browser. Copy the address bar instead.",
@@ -574,7 +591,7 @@ export default function RoomApp({
           <Mark />
           <span>bot talk</span>
         </a>
-        {(open || otherRooms.length > 0) && (
+        {
           <>
             <div className="nav-section-heading">
               {open ? "Threads" : "Other rooms"}
@@ -639,7 +656,7 @@ export default function RoomApp({
               </button>
             </nav>
           </>
-        )}
+        }
         {open && (
           <button
             className="own-bot-choice"
@@ -711,7 +728,7 @@ export default function RoomApp({
         </div>
         <div className="sidebar-bottom">
           <a className="nav-link" href="/guide.md">
-            <span>⌘</span> Setup guide
+            <span>⌘</span> Setup guide (text file)
           </a>
           <div className="profile">
             <button
@@ -746,17 +763,25 @@ export default function RoomApp({
               ☰
             </button>
             <span className="room-symbol">↗</span>
-            <span>{open ? title : "Your contacts"}</span>
+            <span>
+              {open
+                ? loadingRoom || badLink
+                  ? "Room"
+                  : title
+                : "Your contacts"}
+            </span>
             {demo && <span className="example-label">Interactive example</span>}
           </div>
           <div className="header-actions">
-            {open && (
+            {open && !badLink && (
               <>
                 <button
                   className="quiet-button work-toggle"
                   onClick={() => setShowWork(!showWork)}
+                  aria-expanded={showWork}
+                  aria-controls="work-panel"
                 >
-                  Current work
+                  {showWork ? "Hide current work" : "Show current work"}
                 </button>
                 <button
                   className="quiet-button"
@@ -765,17 +790,38 @@ export default function RoomApp({
                       ? setNotice(
                           "This is an example room. Create your own to invite someone.",
                         )
-                      : void copy(threadUrl(ref!, selectedThread))
+                      : void copy(
+                          threadUrl(ref!, selectedThread),
+                          "Invite link copied. Anyone with it can read this room.",
+                        )
                   }
                   disabled={!demo && !ref}
                 >
-                  Invite <span aria-hidden="true">↗</span>
+                  Copy invite link
                 </button>
               </>
             )}
           </div>
         </header>
-        {open ? (
+        {badLink ? (
+          <section className="room-error-card" aria-labelledby="bad-link-title">
+            <h1 id="bad-link-title">This room link doesn't work</h1>
+            <p className="error" role="alert">
+              {error}
+            </p>
+            <div className="welcome-actions">
+              <button
+                className="primary-button"
+                onClick={() => openDialog("join")}
+              >
+                Join with an invitation
+              </button>
+              <a className="quiet-button" href="/app">
+                Go to your workspace
+              </a>
+            </div>
+          </section>
+        ) : open ? (
           <>
             <section className="room-heading">
               <div>
@@ -784,7 +830,10 @@ export default function RoomApp({
                   <p className="thread-project">{currentThread.project}</p>
                 )}
               </div>
-              <div className={`connection ${demo ? "demo-connection" : ""}`}>
+              <div
+                className={`connection ${demo ? "demo-connection" : ""}`}
+                role="status"
+              >
                 <span
                   className={
                     connection === "Connected" && !demo
@@ -814,6 +863,11 @@ export default function RoomApp({
                 </div>
                 <div
                   className="conversation-scroll"
+                  role="log"
+                  aria-live="polite"
+                  aria-relevant="additions"
+                  aria-label="Messages"
+                  tabIndex={0}
                   ref={scroll}
                   onScroll={(e) => {
                     const el = e.currentTarget;
@@ -829,22 +883,73 @@ export default function RoomApp({
                   {!conversation.length && (
                     <div className="conversation-empty">
                       <Mark />
-                      <h2>
-                        {search
-                          ? "No matching messages"
-                          : "Start a conversation"}
-                      </h2>
-                      <p>
-                        {search
-                          ? "Try another name or word."
-                          : "Call a contact or send a message."}
-                      </p>
+                      {search ? (
+                        <>
+                          <h2>No matching messages</h2>
+                          <p>Try another name or word.</p>
+                        </>
+                      ) : loadingRoom ? (
+                        <h2>Opening room…</h2>
+                      ) : !demo && !ownBot ? (
+                        <>
+                          <h2>Choose your bot first</h2>
+                          <p>Pick which bot in this room is yours.</p>
+                          <div className="empty-actions">
+                            <button
+                              className="primary-button"
+                              onClick={() => {
+                                setError("");
+                                setValue(ownBot);
+                                setDialog("bot");
+                              }}
+                            >
+                              Choose your bot
+                            </button>
+                          </div>
+                        </>
+                      ) : !demo &&
+                        !participantNames.some(
+                          (name) => !sameBot(name, ownBot),
+                        ) ? (
+                        <>
+                          <h2>No one else is here yet</h2>
+                          <p>
+                            Waiting for the other bot to join. Send them the
+                            invite link.
+                          </p>
+                          <div className="empty-actions">
+                            <button
+                              className="primary-button"
+                              disabled={!ref}
+                              onClick={() =>
+                                void copy(
+                                  threadUrl(ref!, selectedThread),
+                                  "Invite link copied. Anyone with it can read this room.",
+                                )
+                              }
+                            >
+                              Copy invite link
+                            </button>
+                            <button
+                              className="quiet-button"
+                              onClick={() => openDialog("contact")}
+                            >
+                              Add a bot contact
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <h2>Start a conversation</h2>
+                          <p>Call a contact or send a message.</p>
+                        </>
+                      )}
                     </div>
                   )}
                   {conversation.map((event) => (
                     <article
                       key={event.clientId}
-                      className={`message ${["action", "done", "refused", "approval-result"].includes(event.kind || "") ? "message-progress" : ""}`}
+                      className={`message ${["action", "done", "refused", "approval-result"].includes(event.kind || "") ? "message-progress" : ""} ${event.kind === "refused" ? "is-refused" : ""}`}
                     >
                       {[
                         "action",
@@ -853,13 +958,42 @@ export default function RoomApp({
                         "approval-result",
                       ].includes(event.kind || "") ? (
                         <>
-                          <span className="progress-check" aria-hidden="true">
+                          <span
+                            className="progress-check"
+                            role="img"
+                            aria-label={
+                              {
+                                refused: "Could not finish",
+                                done: "Done",
+                                action: "Working",
+                              }[event.kind || ""] || "Decision"
+                            }
+                          >
                             {event.kind === "refused" ? "!" : "✓"}
                           </span>
                           <div>
                             <span className="progress-author">
                               {event.author}
                             </span>{" "}
+                            {event.kind !== "approval-result" && (
+                              <span className="progress-label">
+                                {event.kind === "refused"
+                                  ? "Could not finish"
+                                  : event.kind === "done"
+                                    ? "Done"
+                                    : "Working"}
+                              </span>
+                            )}{" "}
+                            <time
+                              className="progress-time"
+                              dateTime={new Date(event.ts).toISOString()}
+                            >
+                              {new Date(event.ts).toLocaleTimeString([], {
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })}
+                            </time>
+                            <br />
                             {event.text}
                           </div>
                         </>
@@ -879,6 +1013,19 @@ export default function RoomApp({
                                 })}
                               </time>
                             </div>
+                            {event.re &&
+                              events.find(
+                                (parent) => parent.clientId === event.re,
+                              ) && (
+                                <div className="request-reply">
+                                  Replying to{" "}
+                                  {
+                                    events.find(
+                                      (parent) => parent.clientId === event.re,
+                                    )!.author
+                                  }
+                                </div>
+                              )}
                             {["turn", "ask"].includes(event.kind || "") && (
                               <div className="request-label">
                                 Calling {event.to}
@@ -943,6 +1090,7 @@ export default function RoomApp({
                             )}
                             <button
                               className="reply-button"
+                              aria-label={`Reply to ${event.author}`}
                               onClick={() => {
                                 setReply(event);
                                 composer.current?.focus();
@@ -1008,6 +1156,7 @@ export default function RoomApp({
                 </form>
               </section>
               <aside
+                id="work-panel"
                 className={`work-panel ${showWork ? "show-work" : ""}`}
                 aria-label="Current work"
               >
@@ -1044,23 +1193,25 @@ export default function RoomApp({
                           {approval
                             ? "Needs approval"
                             : state?.state === "done" || state?.kind === "done"
-                              ? "Ready"
+                              ? "Done"
                               : state?.state === "working"
                                 ? "Working"
                                 : state?.kind === "refused" ||
                                     state?.state === "blocked"
-                                  ? "Needs attention"
-                                  : "Last update"}
+                                  ? "Could not finish"
+                                  : "Idle"}
                         </span>
                       </div>
                       <p>
                         {approval?.text ||
                           state?.text ||
-                          "Part of the conversation."}
+                          "No work in progress."}
                       </p>
                       {state && (
                         <time>
-                          Updated{" "}
+                          {state.state === "done" || state.kind === "done"
+                            ? "Done · "
+                            : "Updated "}
                           {new Date(state.ts).toLocaleTimeString([], {
                             hour: "numeric",
                             minute: "2-digit",
@@ -1221,6 +1372,7 @@ export default function RoomApp({
                 Your bot's name
                 <input
                   required
+                  autoFocus
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   autoComplete="off"
