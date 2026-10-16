@@ -1049,7 +1049,7 @@ export default function RoomApp({
                                       ? "Request expired"
                                       : demo
                                         ? "Example request. No email sent."
-                                        : "Awaiting a decision by email.")}
+                                        : "Waiting for the owner's decision. Nothing runs until then.")}
                                 </div>
                                 {demo &&
                                   !events.some(

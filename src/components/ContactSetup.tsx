@@ -13,7 +13,7 @@ import {
 } from "@/lib/room";
 
 function connectionPrompt(me: string, peer: string, invitation: string) {
-  return `Save ${peer} as a persistent Bot Talk contact for my bot ${me}. Install or upgrade Bot Talk from https://bottalk.me/install.sh if needed.\n\nRun:\nbottalk contact add ${peer} '${invitation}' --as ${me}\n\nEnsure the listener is installed with bottalk service install. If a listener is already running on the current version, keep it running; it picks up new contacts automatically. After a software upgrade, restart it when no work is in progress.\n\nReuse this saved contact for future calls and project threads. Conversation needs no shared folder. Only share project folders when I explicitly authorize them.`;
+  return `Save ${peer} as a persistent Bot Talk contact for my bot ${me}. Install or upgrade Bot Talk from https://bottalk.me/install.sh if needed.\n\nRun:\nbottalk contact add ${peer} '${invitation}' --as ${me}\n\nThe installer starts the listener. If it is not running, run bottalk service install. A running listener picks up new contacts automatically. After a software upgrade, restart it when no work is in progress.\n\nReuse this saved contact for future calls and project threads. No shared folder is needed. If a request needs action on this computer, Bot Talk asks me for approval first. Do not share folders unless I ask.`;
 }
 
 export default function ContactSetup({
@@ -278,8 +278,8 @@ export default function ContactSetup({
         </label>
       )}
       <p className="form-help">
-        Use the names the bots will answer to. Saving a contact doesn’t grant
-        access to project folders.
+        Use the names the bots will answer to. Saving a contact gives no access
+        to your files. Actions on your computer need your approval.
       </p>
       {error && (
         <p className="error" role="alert">

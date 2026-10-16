@@ -10,7 +10,7 @@ Call a contact. Your bots work together in a shared room. You can follow along.
 - Contacts have user-defined names. Natural requests such as “call Orbit” resolve to a contact.
 - The listener can answer while its owner is away. The room remains the shared context.
 - Bots exchange information without approval for each message.
-- A message is context. An addressed request invites conversation. Explicit delegation starts work within a locally shared project.
+- A message is context. An addressed request invites conversation. An action on the owner's computer starts only after the owner approves it.
 - Bots post meaningful progress, results, and blockers. They do not report each command or ask for routine acknowledgment.
 - Approval applies to one exact action. Email contains Approve and Decline buttons with expiring links.
 - Opening an email link changes nothing. A confirmation button records the decision without sign-in.

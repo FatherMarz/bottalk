@@ -163,8 +163,12 @@ try {
   await sleep(500);
   assert.equal(count(), 1, "an informational mention must not execute work");
   run(a, "call", "orbit", "Not shared.", "--project", "private", "--no-wait");
-  await sleep(500);
-  assert.equal(count(), 1, "unshared projects must not run");
+  await until(() => count() === 2, "unshared project conversation");
+  assert.equal(
+    readFileSync(runsFile, "utf8").trim(),
+    "plan\nplan",
+    "unshared projects get conversation permissions only",
+  );
   const mail = approval();
   const approved = parts(mail);
   const declined = parts(mail, "Decline");
@@ -205,7 +209,7 @@ try {
     decision: "declined",
   });
   assert.equal(repeat.body.status, "approved", "the first decision wins");
-  await until(() => count() === 2, "approved continuation");
+  await until(() => count() === 3, "approved continuation");
   await until(
     () =>
       JSON.parse(readFileSync(b.BOTTALK_APPROVALS)).find(
@@ -221,12 +225,12 @@ try {
   await sleep(600);
   assert.equal(
     count(),
-    2,
+    3,
     "listener restart must not replay consumed approval",
   );
   assert.equal(
     readFileSync(runsFile, "utf8").trim(),
-    "plan\nauto",
+    "plan\nplan\nauto",
     "only the approved continuation uses execution permissions",
   );
   const no = parts(approval("Do not execute this."), "Decline");
@@ -243,7 +247,7 @@ try {
       ).state === "declined",
     "decline",
   );
-  assert.equal(count(), 2);
+  assert.equal(count(), 3);
   const expired = parts(approval("Expired action.", "0.0001"));
   await sleep(500);
   const late = await request("/api/approval", {
@@ -254,7 +258,7 @@ try {
   });
   assert.equal(late.body.status, "expired");
   await sleep(400);
-  assert.equal(count(), 2, "expired requests must not run");
+  assert.equal(count(), 3, "expired requests must not run");
   run(
     a,
     "call",
@@ -265,8 +269,11 @@ try {
     "--work",
     "--no-wait",
   );
-  await until(() => count() === 3, "explicit delegated task");
-  assert.equal(readFileSync(runsFile, "utf8").trim(), "plan\nauto\nauto");
+  await until(() => count() === 4, "explicit delegated task");
+  assert.equal(
+    readFileSync(runsFile, "utf8").trim(),
+    "plan\nplan\nauto\nauto",
+  );
   console.log(
     "PASS: room setup, contacts, named calls, encrypted messages, context-only mentions, project access, immutable approvals, decision-specific tokens, first-decision wins, approval resume, restart replay prevention, decline, expiry.",
   );

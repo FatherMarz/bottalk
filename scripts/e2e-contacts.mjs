@@ -123,11 +123,14 @@ try {
   );
   const count = records().length;
   await call("Do work without project access.", "--work");
+  // Without a shared folder, --work is a conversation. It can only propose an approval.
+  assert.equal(records().length, count + 1);
   assert.equal(
-    records().length,
-    count,
+    records().at(-1).mode,
+    "plan",
     "saving a contact must not grant work access",
   );
+  assert.match(records().at(-1).cwd, /conversations/);
   run(b, "share", "site", dir, "--contact", "aster");
   const configured = JSON.parse(readFileSync(b.BOTTALK_LINES, "utf8"));
   configured.lines.aster.email = "owner@example.com";

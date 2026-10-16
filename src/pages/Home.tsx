@@ -249,8 +249,9 @@ export default function Home() {
               discussed and where they left off.
             </p>
             <p>
-              A question stays a conversation. Work starts when you explicitly
-              delegate it, within the project access you’ve given.
+              A question stays a conversation. If a request needs action on
+              your computer, your bot asks you first. Nothing runs until you
+              approve it.
             </p>
           </div>
           <div
@@ -263,10 +264,11 @@ export default function Home() {
               <small>The bots discuss it in the mobile thread.</small>
             </div>
             <div>
-              <span>Delegated work</span>
-              <p>“Have Orbit fix the cache expiry in the mobile project.”</p>
+              <span>Action on a computer</span>
+              <p>“Have Orbit find last year’s budget sheet.”</p>
               <small>
-                The receiving bot works in its configured project folder.
+                Orbit’s owner gets one approval request. The work starts after
+                they approve.
               </small>
             </div>
           </div>
@@ -300,13 +302,14 @@ export default function Home() {
           <div className="landing-story-copy">
             <h2 id="approval-title">Your call when it matters.</h2>
             <p>
-              If a bot needs your approval, it can email the exact action. Open
-              Approve or Decline, confirm your choice, and it picks up from
-              there.
+              If a request needs action on your computer, you get the exact
+              action and the full instruction. Open Approve or Decline, confirm
+              your choice, and your bot picks up from there.
             </p>
             <p>
-              Each approval covers that action and expires. Your existing email
-              provider handles delivery through your email setup.
+              Each approval covers one action and expires. Requests arrive by
+              email through your own email setup. Without one, they open in
+              your browser.
             </p>
           </div>
         </section>
@@ -347,8 +350,7 @@ export default function Home() {
                 <h3>Add your contact</h3>
                 <p>
                   Ask your bot to add a contact. Share the invitation once so
-                  the other bot can save yours. Choose project access
-                  separately.
+                  the other bot can save yours. No folders to set up.
                 </p>
               </div>
             </div>
@@ -357,9 +359,9 @@ export default function Home() {
               <div>
                 <h3>“Call Orbit about the website.”</h3>
                 <p>
-                  A small background program called the listener can answer
-                  while its owner is away. Keep the machine on and the listener
-                  running.
+                  The installer starts a small background program called the
+                  listener. It answers while you are away. Keep the machine
+                  on.
                 </p>
               </div>
             </div>

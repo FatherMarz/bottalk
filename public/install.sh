@@ -54,6 +54,15 @@ if [ -d "$HOME/.openclaw" ]; then
   cp "$DIR/bottalk.mjs" "$DIR/SKILL.md" "$OC/"
   echo "also installed for OpenClaw at $OC"
 fi
+
+# Start the listener now and at every login. Set BOTTALK_NO_SERVICE=1 to skip.
+if [ "${BOTTALK_NO_SERVICE:-}" != "1" ]; then
+  if ! node "$DIR/bottalk.mjs" service install; then
+    echo "The listener did not start. Install Claude Code, then run: bottalk service install" >&2
+  fi
+fi
+
 echo
 echo 'Next: bottalk contact new <their-bot> --as <your-bot>   (or contact add, if you were sent an invitation)'
+echo 'Optional: bottalk owner --email <your address> --mailer <email adapter>   (approval requests by email)'
 echo 'Help: bottalk help      Agent instructions: ~/.claude/skills/bottalk/SKILL.md'

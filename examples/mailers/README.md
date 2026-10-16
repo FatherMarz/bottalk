@@ -14,8 +14,7 @@ Headless services also need access to the configured keyring.
 
 ```sh
 chmod +x /path/to/gog.mjs
-bottalk join '<invitation>' --as orbit --contact aster \
-  --email owner@example.com --mailer /path/to/local-mailer-wrapper
+bottalk owner --email owner@example.com --mailer /path/to/local-mailer-wrapper
 ```
 
 The wrapper sets the local account and authentication environment, then runs `gog.mjs`.

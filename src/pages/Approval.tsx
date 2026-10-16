@@ -5,9 +5,14 @@ type Details = {
   text: string;
   resume: string;
   author: string;
-  project?: string;
+  project?: string | null;
   threadName?: string;
+  where?: string;
+  mode?: string;
+  requester?: string;
 };
+const optionalText = (value: unknown) =>
+  value === undefined || value === null || typeof value === "string";
 export default function Approval() {
   const [details, setDetails] = useState<Details | null>(null);
   const [status, setStatus] = useState("loading");
@@ -16,9 +21,11 @@ export default function Approval() {
   const [busy, setBusy] = useState(false);
   const approveRef = useRef<HTMLButtonElement>(null);
   const declineRef = useRef<HTMLButtonElement>(null);
-  const [requestId, roomId, keyRaw, token, action] = location.hash
-    .slice(1)
-    .split(".");
+  // A link carries one decision. A local review link also carries the decline token.
+  const [requestId, roomId, keyRaw, token, action, declineToken] =
+    location.hash.slice(1).split(".");
+  const canApprove = action !== "decline";
+  const canDecline = action === "decline" || !!declineToken;
   useEffect(() => {
     let alive = true;
     const load = async () => {
@@ -41,10 +48,11 @@ export default function Approval() {
           typeof decoded.text !== "string" ||
           typeof decoded.resume !== "string" ||
           typeof decoded.author !== "string" ||
-          (decoded.project !== undefined &&
-            typeof decoded.project !== "string") ||
-          (decoded.threadName !== undefined &&
-            typeof decoded.threadName !== "string")
+          !optionalText(decoded.project) ||
+          !optionalText(decoded.threadName) ||
+          !optionalText(decoded.where) ||
+          !optionalText(decoded.mode) ||
+          !optionalText(decoded.requester)
         )
           throw new Error(
             "This request cannot be verified. Ask for a new approval request.",
@@ -74,7 +82,15 @@ export default function Approval() {
     try {
       const result = await request(
         "/api/approval",
-        { action: "decide", id: requestId, token, decision },
+        {
+          action: "decide",
+          id: requestId,
+          token:
+            decision === "declined" && action !== "decline"
+              ? declineToken
+              : token,
+          decision,
+        },
         "This request is no longer available. Ask for a new one.",
       );
       setStatus(result.status);
@@ -135,10 +151,20 @@ export default function Approval() {
               {details.project ? ` · ${details.project}` : ""}
               {details.threadName ? ` · ${details.threadName}` : ""}
             </p>
+            {details.requester && details.requester !== details.author && (
+              <p>Asked by {details.requester}</p>
+            )}
             <div className="approval-card">
               <p className="message-text">{details.text}</p>
               <h2>What the bot will do</h2>
               <p className="message-text">{details.resume}</p>
+              {(details.where || details.mode) && (
+                <p className="approval-expires">
+                  {details.where ? `Runs in: ${details.where}` : ""}
+                  {details.where && details.mode ? " · " : ""}
+                  {details.mode ? `Permission mode: ${details.mode}` : ""}
+                </p>
+              )}
             </div>
           </>
         )}
@@ -163,23 +189,33 @@ export default function Approval() {
               can’t be reused.
             </small>
             <div className="approval-actions">
-              <button
-                ref={approveRef}
-                className="primary-button"
-                disabled={busy}
-                onClick={() => void decide("approved")}
-              >
-                {busy ? "Saving…" : "Approve"}
-              </button>
-              <button
-                ref={declineRef}
-                className="quiet-button"
-                disabled={busy}
-                onClick={() => void decide("declined")}
-              >
-                Decline
-              </button>
+              {canApprove && (
+                <button
+                  ref={approveRef}
+                  className="primary-button"
+                  disabled={busy}
+                  onClick={() => void decide("approved")}
+                >
+                  {busy ? "Saving…" : "Approve"}
+                </button>
+              )}
+              {canDecline && (
+                <button
+                  ref={declineRef}
+                  className={canApprove ? "quiet-button" : "primary-button"}
+                  disabled={busy}
+                  onClick={() => void decide("declined")}
+                >
+                  {busy && !canApprove ? "Saving…" : "Decline"}
+                </button>
+              )}
             </div>
+            {!canDecline && (
+              <small>
+                To decline, use the Decline link in the email. Or do nothing
+                and the request expires.
+              </small>
+            )}
           </>
         )}
         {["approved", "declined", "expired"].includes(status) && (

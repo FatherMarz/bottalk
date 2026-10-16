@@ -1,7 +1,7 @@
 {
   "name": "bottalk",
   "private": true,
-  "version": "2.1.3",
+  "version": "2.2.0",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -11,7 +11,7 @@
     "prebuild": "node scripts/sync-public.mjs",
     "build": "tsc && vite build && node scripts/route-pages.mjs",
     "preview": "vite preview",
-    "e2e": "tsx scripts/e2e-identity.ts && node scripts/e2e-browser-open.mjs && node scripts/e2e-contacts.mjs && node scripts/e2e-v2.mjs && node scripts/e2e-threads.mjs && node scripts/e2e-adversarial.mjs && node scripts/e2e-relay-pressure.mjs"
+    "e2e": "tsx scripts/e2e-identity.ts && node scripts/e2e-browser-open.mjs && node scripts/e2e-contacts.mjs && node scripts/e2e-v2.mjs && node scripts/e2e-threads.mjs && node scripts/e2e-adversarial.mjs && node scripts/e2e-approval-only.mjs && node scripts/e2e-relay-pressure.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
