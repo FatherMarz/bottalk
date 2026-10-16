@@ -20,11 +20,13 @@ export default function ContactSetup({
   initial,
   contacts,
   demo,
+  peerConnection = false,
   onSaved,
 }: {
   initial?: Contact;
   contacts: Contact[];
   demo: boolean;
+  peerConnection?: boolean;
   onSaved: (contact: Contact) => void;
 }) {
   const [mode, setMode] = useState<"create" | "join">(
@@ -33,7 +35,10 @@ export default function ContactSetup({
   const [peer, setPeer] = useState(initial?.name || "");
   const [me, setMe] = useState(initial?.me || readLocal("bottalk-own-bot", ""));
   const [invitation, setInvitation] = useState(initial?.url || "");
-  const [result, setResult] = useState<Contact | null>(null);
+  const peerSetup = peerConnection && !!initial?.me;
+  const [result, setResult] = useState<Contact | null>(
+    peerSetup ? initial! : null,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -99,51 +104,82 @@ export default function ContactSetup({
     return (
       <div className="contact-setup-result">
         <p className="contact-saved-title">
-          {result.name} is in your contacts.
+          {peerSetup
+            ? `Connect ${result.name}`
+            : `${result.name} is in your contacts.`}
         </p>
         <p>
-          Give this to your bot once. It saves the connection on its machine so
-          you can call {result.name} by name.
+          {peerSetup
+            ? "Send these instructions to your collaborator."
+            : `Give this to your bot once. It saves the connection on its machine so you can call ${result.name} by name.`}
         </p>
         <textarea
           className="connection-instructions"
           readOnly
-          aria-label="Instructions for your bot"
-          value={own}
+          aria-label={
+            peerSetup
+              ? "Instructions for their bot"
+              : "Instructions for your bot"
+          }
+          value={peerSetup ? peerPrompt : own}
           rows={7}
         />
         <button
           className="primary-button"
-          onClick={() => void copy(own, "Instructions copied for your bot.")}
+          onClick={() =>
+            void copy(
+              peerSetup ? peerPrompt : own,
+              peerSetup
+                ? "Instructions copied for their bot."
+                : "Instructions copied for your bot.",
+            )
+          }
         >
-          Copy for your bot <span aria-hidden="true">↗</span>
+          {peerSetup ? "Copy for their bot" : "Copy for your bot"}{" "}
+          <span aria-hidden="true">↗</span>
         </button>
         <details className="contact-peer-instructions">
-          <summary>Connect {result.name} on their machine</summary>
+          <summary>
+            {peerSetup
+              ? "Instructions for your bot"
+              : `Connect ${result.name} on their machine`}
+          </summary>
           <p>
-            Send these instructions to your collaborator. Their bot joins the
-            same connection and saves yours as a contact.
+            {peerSetup
+              ? "Use these if your own bot also needs to save this connection."
+              : "Send these instructions to your collaborator. Their bot joins the same connection and saves yours as a contact."}
           </p>
           <textarea
             className="connection-instructions"
             readOnly
-            aria-label="Instructions for their bot"
-            value={peerPrompt}
+            aria-label={
+              peerSetup
+                ? "Instructions for your bot"
+                : "Instructions for their bot"
+            }
+            value={peerSetup ? own : peerPrompt}
             rows={7}
           />
           <button
             className="quiet-button"
             onClick={() =>
-              void copy(peerPrompt, "Instructions copied for their bot.")
+              void copy(
+                peerSetup ? own : peerPrompt,
+                peerSetup
+                  ? "Instructions copied for your bot."
+                  : "Instructions copied for their bot.",
+              )
             }
           >
-            Copy for their bot
+            {peerSetup ? "Copy for your bot" : "Copy for their bot"}
           </button>
         </details>
-        <p className="contact-persistence-note">
-          Saved contacts survive restarts and updates. This browser and your bot
-          each keep a local copy.
-        </p>
+        {!peerSetup && (
+          <p className="contact-persistence-note">
+            Saved contacts survive restarts and updates. This browser and your
+            bot each keep a local copy.
+          </p>
+        )}
         {demo && (
           <p className="form-help">
             Example only. No invitation was created and no bot was contacted.

@@ -1171,6 +1171,9 @@ export default function RoomApp({
               initial={contactToConnect}
               contacts={contacts}
               demo={demo}
+              peerConnection={
+                !!contactToConnect && needsConnection(contactToConnect)
+              }
               onSaved={(contact) => {
                 let next = [
                   ...contacts.filter(

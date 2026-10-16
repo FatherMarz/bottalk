@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ContactSetup from "../src/components/ContactSetup";
 import {
   connectionKey,
   contactHasJoined,
@@ -114,6 +117,28 @@ assert.ok(opening.hash.includes("&me=Aster"));
 assert.ok(opening.hash.includes("thread=project"));
 for (const name of ["__proto__", "constructor", "a bot", ""])
   assert.equal(validBotName(name), false);
+const connection = renderToStaticMarkup(
+  createElement(ContactSetup, {
+    initial: { name: "Orbit", me: "Aster", url },
+    contacts: [],
+    demo: false,
+    peerConnection: true,
+    onSaved: () => {},
+  }),
+);
+assert.ok(
+  !connection.includes("<form"),
+  "An existing peer connection must open instructions without another setup form",
+);
+const peerInstructions = connection.match(
+  /<textarea[^>]*aria-label="Instructions for their bot"[^>]*>([\s\S]*?)<\/textarea>/,
+)?.[1];
+assert.ok(peerInstructions?.includes("bottalk contact add Aster"));
+assert.ok(
+  peerInstructions?.includes("--as Orbit"),
+  "The primary instructions must configure their bot, not your already-connected bot",
+);
+assert.ok(connection.includes("Copy for their bot"));
 console.log(
   "PASS: own-bot selection, room-scoped identity, legacy aliases, human/bot labels, stale self-contact removal, observer safety, and private opener hints.",
 );
