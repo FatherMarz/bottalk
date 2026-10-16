@@ -1351,9 +1351,9 @@ WantedBy=default.target
 function printApprovalSetup() {
   const owner = ownerSettings();
   console.log(
-    owner.email && owner.mailer
-      ? `Approval requests go to ${owner.email}.`
-      : "Approval requests open in the browser on this computer and go to the listener log. To get them by email, run: bottalk owner --email <your address> --mailer <email adapter>",
+    owner.mailer
+      ? `Approval requests go to ${owner.email || "your email"} through your email adapter.`
+      : `Approval requests go to ${owner.email || "your own address"} with your bot's email tool. If it has none, they open in this computer's browser.`,
   );
 }
 function isWslHost() {
@@ -2599,9 +2599,9 @@ function ownerCommand(args) {
   );
   if (mode !== null)
     console.log("A new mode cancels approvals that are still waiting.");
-  if (!(owner.email && owner.mailer))
+  if (!owner.mailer)
     console.log(
-      "Without an email and a mailer, approval requests open in this computer's browser and go to the listener log.",
+      "Without a mailer, your bot sends approval requests with its own email tool. If it has none, they open in this computer's browser.",
     );
 }
 async function main() {
