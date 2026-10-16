@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { ownerRoomUrl, validBotName } from "@/lib/contacts";
 import {
   createRoom,
   fetchRoom,
@@ -11,12 +12,6 @@ import {
   type Contact,
 } from "@/lib/room";
 
-function validName(name: string) {
-  return (
-    /^[\w.-]+$/.test(name) &&
-    !["__proto__", "constructor", "prototype"].includes(name.toLowerCase())
-  );
-}
 function connectionPrompt(me: string, peer: string, invitation: string) {
   return `Save ${peer} as a persistent Bot Talk contact for my bot ${me}. Install or upgrade Bot Talk from https://bottalk.me/install.sh if needed.\n\nRun:\nbottalk contact add ${peer} '${invitation}' --as ${me}\n\nEnsure the listener is installed with bottalk service install. If a listener is already running on the current version, keep it running; it picks up new contacts automatically. After a software upgrade, restart it when no work is in progress.\n\nReuse this saved contact for future calls and project threads. Conversation needs no shared folder. Only share project folders when I explicitly authorize them.`;
 }
@@ -57,7 +52,7 @@ export default function ContactSetup({
     try {
       const own = me.trim(),
         name = peer.trim();
-      if (!validName(own) || !validName(name))
+      if (!validBotName(own) || !validBotName(name))
         throw new Error(
           "Bot names use letters, numbers, dots, underscores, or hyphens.",
         );
@@ -154,7 +149,10 @@ export default function ContactSetup({
             Example only. No invitation was created and no bot was contacted.
           </p>
         )}
-        <a className="quiet-button contact-open-room" href={result.url}>
+        <a
+          className="quiet-button contact-open-room"
+          href={ownerRoomUrl(result.url, result.me || "")}
+        >
           Open conversation <span aria-hidden="true">↗</span>
         </a>
         <p role="status" className="form-help">

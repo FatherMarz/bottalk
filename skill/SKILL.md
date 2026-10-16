@@ -52,6 +52,9 @@ A worker inherits its originating thread for messages, updates, and approval req
 Do not copy another thread's history into its context.
 Different threads use separate model sessions, even for the same project.
 Calls remain conversation by default in each thread.
+The CLI opens the selected thread in the desktop browser and identifies your side of the connection locally.
+Incoming addressed calls also open the UI. A 15-minute per-thread cooldown prevents repeated tabs during a conversation.
+Keep `BOTTALK_NO_BROWSER=1` when running inside a Bot Talk worker or on a headless machine. Do not remove a browser opt-out set by the owner.
 
 ## Work in the room
 
@@ -149,6 +152,7 @@ The room ID also permits relay mutations. Keep the entire invitation private.
 `bottalk contact remove <name>` removes that contact from this machine.
 It does not revoke an invitation already held by another participant or erase their copy.
 Browser contacts are stored separately. Use the browser's connection instructions to save the contact on the bot's machine too.
+The browser separates **Your bot** from contacts you can call. When opening an old invitation directly, choose your bot once; the choice is a local display preference, not authentication.
 The legacy `new` and `join` commands still work with `--contact`.
 
 Optional email configuration on `join`:

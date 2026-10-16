@@ -1,6 +1,18 @@
 import ContactSetup from "./ContactSetup";
 import { Avatar, Mark } from "./Identity";
 import {
+  connectionKey,
+  contactHasJoined,
+  isBotEvent,
+  mergeRoomContacts,
+  ownBotForRoom,
+  ownerRoomUrl,
+  roomBotNames,
+  sameBot,
+  sameConnection,
+  validBotName,
+} from "@/lib/contacts";
+import {
   useEffect,
   useRef,
   useState,
@@ -28,7 +40,7 @@ import {
   type RoomRef,
 } from "@/lib/room";
 
-type DialogName = "new" | "join" | "contact" | "name" | "thread" | null;
+type DialogName = "new" | "join" | "contact" | "name" | "bot" | "thread" | null;
 function Modal({
   title,
   close,
@@ -105,6 +117,43 @@ export default function RoomApp({
   const [author, setAuthor] = useState<string>(() =>
     readLocal("bottalk-name", ""),
   );
+  const [botPreferences, setBotPreferences] = useState<Record<string, string>>(
+    () => readLocal("bottalk-room-bots", {}),
+  );
+  const participantNames = roomBotNames(events);
+  const ownBot = demo
+    ? "Aster"
+    : ref
+      ? ownBotForRoom(
+          roomUrl(ref),
+          contacts,
+          botPreferences,
+          participantNames,
+          readLocal("bottalk-own-bot", ""),
+        )
+      : "";
+  const visibleContacts = contacts
+    .filter((contact) => {
+      if (room && ref && sameConnection(contact.url, roomUrl(ref)))
+        return !!ownBot && !sameBot(contact.name, ownBot);
+      const me = ownBotForRoom(contact.url, contacts, botPreferences, [], "");
+      return !me || !sameBot(contact.name, me);
+    })
+    .filter((contact) => !demo || !sameBot(contact.name, ownBot));
+  const needsConnection = (contact: Contact) =>
+    !!(
+      room &&
+      ref &&
+      sameConnection(contact.url, roomUrl(ref)) &&
+      !contactHasJoined(events, contact.name)
+    );
+  const rememberOwnBot = (url: string, name: string) => {
+    setBotPreferences((previous) => {
+      const next = { ...previous, [connectionKey(url)]: name };
+      if (!demo) writeLocal("bottalk-room-bots", next);
+      return next;
+    });
+  };
   const [selectedThread, setSelectedThread] = useState(() => {
     const fragment = location.hash.split("&").slice(1).join("&");
     return (
@@ -198,6 +247,17 @@ export default function RoomApp({
       void parseRoom(location.href)
         .then((result) => {
           if (!alive || current !== generation) return;
+          const ownHint = params.get("me");
+          if (ownHint && validBotName(ownHint))
+            rememberOwnBot(roomUrl(result), ownHint);
+          if (params.has("me")) {
+            params.delete("me");
+            history.replaceState(
+              null,
+              "",
+              `${location.pathname}${location.search}#${location.hash.slice(1).split("&")[0]}${params.size ? `&${params}` : ""}`,
+            );
+          }
           const identity = `${result.id}.${Array.from(result.raw).join(",")}`;
           if (identity !== roomIdentity.current) {
             roomIdentity.current = identity;
@@ -238,31 +298,15 @@ export default function RoomApp({
         setError("");
         remember(ref, nameFor(next));
         setSaved(rooms());
-        const peers = [
-          ...new Set(
-            next.filter((e) => e.kind === "contact").map((e) => e.author),
-          ),
-        ];
-        if (peers.length)
+        const peers = roomBotNames(next);
+        if (ownBot)
           setContacts((previous) => {
-            const own = previous.find(
-              (contact) => contact.url === roomUrl(ref) && contact.me,
-            )?.me;
-            const merged = previous.filter(
-              (contact) =>
-                !(
-                  own &&
-                  contact.url === roomUrl(ref) &&
-                  contact.name.toLowerCase() === own.toLowerCase()
-                ),
+            const merged = mergeRoomContacts(
+              previous,
+              peers,
+              roomUrl(ref),
+              ownBot,
             );
-            for (const name of peers.filter(
-              (name) => !own || name.toLowerCase() !== own.toLowerCase(),
-            ))
-              if (
-                !merged.some((c) => c.name.toLowerCase() === name.toLowerCase())
-              )
-                merged.push({ name, url: roomUrl(ref) });
             writeLocal("bottalk-contacts", merged);
             return merged;
           });
@@ -279,24 +323,15 @@ export default function RoomApp({
       alive = false;
       clearTimeout(timer);
     };
-  }, [ref]);
+  }, [ref, ownBot]);
   useEffect(() => {
     if (nearBottom.current && scroll.current)
       scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [events, search, selectedThread]);
-  const botNames = [
-    ...new Set(
-      visibleEvents
-        .filter(
-          (e) =>
-            e.role === "bot" ||
-            ["status", "action", "done", "refused", "approval"].includes(
-              e.kind || "",
-            ),
-        )
-        .map((e) => e.author),
-    ),
-  ];
+  const botNames = roomBotNames(visibleEvents).map(
+    (name) =>
+      participantNames.find((candidate) => sameBot(candidate, name)) || name,
+  );
   const pending = visibleEvents.filter(
     (e) =>
       e.kind === "approval" &&
@@ -313,12 +348,32 @@ export default function RoomApp({
   );
   const callStarted = useRef(false);
   const askContact = async (contact: Contact) => {
+    const me =
+      ref && sameConnection(contact.url, roomUrl(ref))
+        ? ownBot
+        : ownBotForRoom(contact.url, contacts, botPreferences, [], "");
+    if (me && sameBot(contact.name, me)) {
+      setError("That's your bot. Choose another contact.");
+      return;
+    }
     if (open && !currentThread) {
       setError("Choose a thread before calling a contact.");
       return;
     }
-    if (!open || (!demo && ref && contact.url !== roomUrl(ref))) {
-      location.href = `${contact.url}${contact.url.includes("#") ? "&" : "?"}call=${encodeURIComponent(contact.name)}`;
+    if (!open || (!demo && ref && !sameConnection(contact.url, roomUrl(ref)))) {
+      const destination = ownerRoomUrl(contact.url, me);
+      location.href = `${destination}${destination.includes("#") ? "&" : "?"}call=${encodeURIComponent(contact.name)}`;
+      return;
+    }
+    if (!ownBot && !demo) {
+      setValue("");
+      setDialog("bot");
+      return;
+    }
+    if (needsConnection(contact)) {
+      setError("");
+      setContactToConnect({ ...contact, me: ownBot });
+      setDialog("contact");
       return;
     }
     if (!author.trim() && !demo) {
@@ -357,13 +412,14 @@ export default function RoomApp({
       ref &&
       connection === "Connected" &&
       author &&
+      ownBot &&
       !callStarted.current
     ) {
       callStarted.current = true;
       void askContact({ name: decodeURIComponent(call), url: roomUrl(ref) });
       history.replaceState(null, "", threadUrl(ref, selectedThread));
     }
-  }, [ref, connection, author]);
+  }, [ref, connection, author, ownBot]);
   const publish = async (event: Omit<Event, "ts" | "clientId">) => {
     if (demo) {
       const result = {
@@ -400,11 +456,23 @@ export default function RoomApp({
     setError("");
     const text = draft.trim();
     try {
+      const addressed = asked(text);
+      if (addressed.to && !ownBot && !demo) {
+        setValue("");
+        setDialog("bot");
+        return;
+      }
+      if (addressed.to && ownBot && sameBot(addressed.to, ownBot))
+        throw new Error("That's your bot. Choose another contact.");
+      if (addressed.to && !demo && !contactHasJoined(events, addressed.to))
+        throw new Error(
+          "That bot needs to connect with a current listener. Use Connect in Contacts.",
+        );
       await publish({
         author: author || "You",
         role: "human",
-        ...asked(text),
-        project: asked(text).project || currentThread?.project,
+        ...addressed,
+        project: addressed.project || currentThread?.project,
         ...(reply ? { re: reply.clientId } : {}),
       });
       setDraft("");
@@ -466,6 +534,11 @@ export default function RoomApp({
       if (dialog === "name") {
         setAuthor(value.trim());
         writeLocal("bottalk-name", value.trim());
+      }
+      if (dialog === "bot") {
+        if (!ref || !validBotName(value.trim()))
+          throw new Error("Choose your bot's name.");
+        rememberOwnBot(roomUrl(ref), value.trim());
       }
       setDialog(null);
     } catch (e) {
@@ -567,6 +640,29 @@ export default function RoomApp({
             </nav>
           </>
         )}
+        {open && (
+          <button
+            className="own-bot-choice"
+            disabled={demo}
+            onClick={() => {
+              setError("");
+              setValue(ownBot);
+              setDialog("bot");
+            }}
+            aria-label={
+              ownBot
+                ? `Your bot: ${ownBot}${demo ? "" : ". Change your bot"}`
+                : "Choose your bot"
+            }
+          >
+            <Avatar name={ownBot || "You"} bot small />
+            <span>
+              <small>Your bot</small>
+              <strong>{ownBot || "Choose your bot"}</strong>
+            </span>
+            <span aria-hidden="true">⌄</span>
+          </button>
+        )}
         <div className="nav-section-heading contacts-heading">
           Contacts
           <button
@@ -578,23 +674,40 @@ export default function RoomApp({
           </button>
         </div>
         <div className="contacts-list">
-          {contacts.map((contact) => (
+          {visibleContacts.map((contact) => (
             <div className="contact-row" key={contact.name}>
               <Avatar name={contact.name} bot small />
               <div>
                 <strong>{contact.name}</strong>
-                <small>{open ? "Call in this thread" : "Shared room"}</small>
+                <small>
+                  {needsConnection(contact)
+                    ? "Needs bot connection"
+                    : open &&
+                        (demo ||
+                          (ref && sameConnection(contact.url, roomUrl(ref))))
+                      ? "Call in this thread"
+                      : "Open conversation"}
+                </small>
               </div>
               <button
                 className="contact-call"
                 onClick={() => void askContact(contact)}
-                aria-label={`Call ${contact.name}`}
+                aria-label={`${needsConnection(contact) ? "Connect" : "Call"} ${contact.name}`}
               >
-                Call <span aria-hidden="true">↗</span>
+                {needsConnection(contact) ? "Connect" : "Call"}{" "}
+                <span aria-hidden="true">↗</span>
               </button>
             </div>
           ))}
-          {!contacts.length && <p className="nav-empty">No contacts yet.</p>}
+          {!visibleContacts.length && (
+            <p className="nav-empty">
+              {open && !ownBot
+                ? "Choose your bot to see your contacts."
+                : open
+                  ? "No other bots have joined yet."
+                  : "No contacts yet."}
+            </p>
+          )}
         </div>
         <div className="sidebar-bottom">
           <a className="nav-link" href="/guide.md">
@@ -752,18 +865,11 @@ export default function RoomApp({
                         </>
                       ) : (
                         <>
-                          <Avatar
-                            name={event.author}
-                            bot={
-                              event.role === "bot" ||
-                              botNames.includes(event.author)
-                            }
-                          />
+                          <Avatar name={event.author} bot={isBotEvent(event)} />
                           <div className="message-content">
                             <div className="message-heading">
                               <strong>{event.author}</strong>
-                              {(event.role === "bot" ||
-                                botNames.includes(event.author)) && (
+                              {isBotEvent(event) && (
                                 <span className="bot-label">BOT</span>
                               )}
                               <time dateTime={new Date(event.ts).toISOString()}>
@@ -915,20 +1021,23 @@ export default function RoomApp({
                   const state = visibleEvents
                     .filter(
                       (event) =>
-                        event.author === name &&
+                        sameBot(event.author, name) &&
                         ["status", "answer", "done", "refused"].includes(
                           event.kind || "",
                         ),
                     )
                     .at(-1);
-                  const approval = pending.find(
-                    (event) => event.author === name,
+                  const approval = pending.find((event) =>
+                    sameBot(event.author, name),
                   );
                   return (
                     <div className="agent-work" key={name}>
                       <div className="agent-work-heading">
                         <Avatar name={name} bot small />
                         <strong>{name}</strong>
+                        {sameBot(name, ownBot) && (
+                          <small className="own-agent-label">Your bot</small>
+                        )}
                         <span
                           className={`work-status ${approval ? "needs-input" : ""}`}
                         >
@@ -938,7 +1047,10 @@ export default function RoomApp({
                               ? "Ready"
                               : state?.state === "working"
                                 ? "Working"
-                                : "Last update"}
+                                : state?.kind === "refused" ||
+                                    state?.state === "blocked"
+                                  ? "Needs attention"
+                                  : "Last update"}
                         </span>
                       </div>
                       <p>
@@ -978,14 +1090,16 @@ export default function RoomApp({
                 View example
               </a>
             </div>
-            {contacts.length > 0 && (
+            {visibleContacts.length > 0 && (
               <div className="contact-book" aria-label="Saved bot contacts">
-                {contacts.map((contact) => (
+                {visibleContacts.map((contact) => (
                   <article className="contact-book-card" key={contact.name}>
                     <Avatar name={contact.name} bot />
                     <div>
                       <h2>
-                        <a href={contact.url}>{contact.name}</a>
+                        <a href={ownerRoomUrl(contact.url, contact.me || "")}>
+                          {contact.name}
+                        </a>
                       </h2>
                       <p>
                         {contact.me
@@ -994,7 +1108,10 @@ export default function RoomApp({
                       </p>
                     </div>
                     <div className="contact-book-actions">
-                      <a href={contact.url} className="quiet-button">
+                      <a
+                        href={ownerRoomUrl(contact.url, contact.me || "")}
+                        className="quiet-button"
+                      >
                         Open conversation ↗
                       </a>
                       <button
@@ -1045,6 +1162,7 @@ export default function RoomApp({
                 ? `Connect ${contactToConnect.name}`
                 : "Add a bot contact",
               name: "Your name",
+              bot: "Your bot",
             }[dialog]
           }
         >
@@ -1054,13 +1172,17 @@ export default function RoomApp({
               contacts={contacts}
               demo={demo}
               onSaved={(contact) => {
-                const next = [
+                let next = [
                   ...contacts.filter(
                     (item) =>
                       item.name.toLowerCase() !== contact.name.toLowerCase(),
                   ),
                   contact,
                 ];
+                if (contact.me) {
+                  rememberOwnBot(contact.url, contact.me);
+                  next = mergeRoomContacts(next, [], contact.url, contact.me);
+                }
                 setContacts(next);
                 if (!demo) {
                   writeLocal("bottalk-contacts", next);
@@ -1068,6 +1190,50 @@ export default function RoomApp({
                 }
               }}
             />
+          ) : dialog === "bot" ? (
+            <form
+              onSubmit={(e) => void submitDialog(e)}
+              className="bot-choice-form"
+            >
+              <div
+                className="bot-choice-list"
+                role="group"
+                aria-label="Bots in this room"
+              >
+                {participantNames.map((name) => (
+                  <button
+                    key={name}
+                    className="bot-choice-option"
+                    type="button"
+                    aria-pressed={sameBot(name, value)}
+                    onClick={() => setValue(name)}
+                  >
+                    <Avatar name={name} bot small />
+                    <strong>{name}</strong>
+                    <span>{sameBot(name, value) ? "Selected" : ""}</span>
+                  </button>
+                ))}
+              </div>
+              <label className="field-label">
+                Your bot's name
+                <input
+                  required
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={80}
+                />
+              </label>
+              {error && (
+                <p className="error" role="alert">
+                  {error}
+                </p>
+              )}
+              <button className="primary-button" disabled={busy}>
+                {busy ? "Saving…" : "Save your bot"}
+              </button>
+            </form>
           ) : (
             <form onSubmit={(e) => void submitDialog(e)}>
               <label className="field-label">

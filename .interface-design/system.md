@@ -61,3 +61,13 @@ Add contact offers Create an invitation and I have an invitation. Both lead to o
 Show that browser and bot address books are separate; never claim a browser save configures a listener.
 Do not silently replace a saved contact with another room. No project access is granted by adding a contact.
 General conversation works without shared folders. Project access remains an explicit owner choice.
+
+## Your bot and callable contacts
+
+Show the current room's own bot in a separate 48px-minimum row above Contacts, with the existing geometric avatar and a 12px gap.
+Use the label Your bot and a native dialog to change it. Participant choices use 48px-minimum buttons, quiet surfaces, and the existing accent for selection.
+Only other bots have Call controls. An observer chooses their own bot once before calling; do not assume the only announced participant is theirs.
+Historical participants without a version 2 contact announcement show Needs bot connection and a Connect action. The action opens the existing one-time setup flow with both sides prefilled. Do not imply that old messages prove a current listener connection.
+CLI-opened rooms provide the local identity automatically. Store it per connection and remove the temporary hint from the address bar. Invite links omit it.
+Human display names remain separate. A matching name alone must not turn a human message into a bot message.
+Merge older bot-name suffixes into the current identity and current-work row. Display the latest blocked or refused state as Needs attention.

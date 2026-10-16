@@ -374,6 +374,66 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.own-bot-choice {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  margin-top: 24px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+}
+.own-bot-choice > span:nth-child(2) {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.own-bot-choice small,
+.own-agent-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.own-bot-choice strong {
+  font-size: 12px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.own-bot-choice:hover:not(:disabled),
+.bot-choice-option:hover {
+  background: var(--moss-wash);
+}
+.bot-choice-list {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+.bot-choice-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+}
+.bot-choice-option[aria-pressed="true"] {
+  border-color: var(--moss);
+  background: var(--moss-wash);
+}
+.bot-choice-option > span:last-child {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
 .theme-button {
   font-size: 20px;
 }

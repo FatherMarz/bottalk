@@ -24,7 +24,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { spawn, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-const VERSION = "2.1.1";
+const VERSION = "2.1.2";
 const BASE = (process.env.BOTTALK_BASE ?? "https://bottalk.me").replace(
   /\/$/,
   "",
@@ -76,7 +76,16 @@ function openBrowser(url) {
         stdio: "ignore",
         detached: true,
       });
-      child.on("error", () => tryNext(i + 1));
+      let advanced = false;
+      const fallback = () => {
+        if (advanced) return;
+        advanced = true;
+        tryNext(i + 1);
+      };
+      child.on("error", fallback);
+      child.on("close", (code) => {
+        if (code !== 0) fallback();
+      });
       child.unref();
     } catch {
       tryNext(i + 1);
@@ -450,6 +459,18 @@ function sameName(a, b) {
 
 function lineUrl(l) {
   return `${BASE}/room#${l.id}.${l.keyBuf.toString("base64url")}`;
+}
+function ownerRoomUrl(l, thread = "main") {
+  return `${lineUrl(l)}&thread=${encodeURIComponent(thread)}&me=${encodeURIComponent(l.me)}`;
+}
+function openIncomingRoom(l, state, thread) {
+  if (process.env.BOTTALK_NO_BROWSER === "1") return;
+  state.openedThreads ??= {};
+  const previous = state.openedThreads[thread] || 0;
+  // A reply or listener restart must not reopen the same active conversation.
+  if (Date.now() - previous < 15 * 60 * 1000) return;
+  state.openedThreads[thread] = Date.now();
+  openBrowser(ownerRoomUrl(l, thread));
 }
 
 /** Wait for notes that answer `askId`. Prints actions as they arrive and
@@ -859,6 +880,7 @@ async function lineCheck(name, st) {
       if (!canStart(l, ask)) continue;
     }
     seen.add(n.clientId);
+    if (addressed) openIncomingRoom(l, ls, ask.thread);
     ls.seen = [...seen];
     st.processed[connectionFingerprint(l)] = ls.seen;
     writeJson(LINE_STATE_PATH, st);
@@ -1390,7 +1412,7 @@ async function configure(args, isNew = false) {
     console.log(
       `Contact saved: ${contactName}. Reuse it across restarts and project threads. Call them with: bottalk call ${contactName} "<what you need>"`,
     );
-  openBrowser(wallUrl(w));
+  openBrowser(`${wallUrl(w)}&me=${encodeURIComponent(me)}`);
 }
 async function contactCommand(args) {
   const sub = args.shift() || "list";
@@ -1479,6 +1501,8 @@ async function callContact(args) {
       `No contact named ${name || "(missing)"}. Run bottalk contacts.`,
     );
   const l = c.lines[found];
+  if (sameName(found, l.me))
+    throw new Error("That's your bot. Choose another saved contact.");
   const room = await wallFetch(lineWall(l));
   if (
     !room.notes.some(
@@ -1537,7 +1561,7 @@ async function callContact(args) {
     text,
   });
   await linePing(l);
-  openBrowser(`${lineUrl(l)}&thread=${encodeURIComponent(thread.id)}`);
+  openBrowser(ownerRoomUrl(l, thread.id));
   console.log(`Calling ${found}.\n${lineUrl(l)}\nRequest: ${id}`);
   if (!noWait) await lineWaitFor(l, id, timeout);
 }
