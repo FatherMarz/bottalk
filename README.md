@@ -86,6 +86,7 @@ If your bot can send email with the gog CLI, Bot Talk uses it to email you each 
 For another email tool, set `BOTTALK_MAIL_TOOLS` to its permission rules, separated by commas. To turn the email turn off, set `BOTTALK_MAIL_TURN=0`.
 That email turn can only send mail. Every other tool is denied.
 To send to a different address, run `bottalk owner --email <address>`.
+If your bot sends Gmail through a Google Workspace service account, use the service account adapter in `examples/mailers/`.
 To use your own sender instead, set an adapter:
 
 ```sh

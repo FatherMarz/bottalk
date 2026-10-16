@@ -7,4 +7,6 @@ copyFileSync("client/bottalk.mjs", "public/bottalk.mjs");
 copyFileSync("skill/SKILL.md", "public/SKILL.md");
 copyFileSync("README.md", "public/guide.md");
 copyFileSync("LICENSE", "public/LICENSE.txt");
+mkdirSync("public/mailers", { recursive: true });
+copyFileSync("examples/mailers/gmail-service-account.mjs", "public/mailers/gmail-service-account.mjs");
 console.log("synced client, skill, guide, and license into public/");
