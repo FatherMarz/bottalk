@@ -72,9 +72,12 @@ function openBrowser(url) {
       ? [["open", [url]]]
       : process.platform === "win32"
         ? [["cmd", ["/c", "start", "", url]]]
-        : [
+        : isWslHost()
+          ? // Ubuntu on Windows has no browser of its own. Windows opens the link.
+            [["cmd.exe", ["/c", "start", "", url.replaceAll("&", "^&")]]]
+          : [
             ["xdg-open", [url]],
-            ["wslview", [url]], // WSL
+            ["wslview", [url]],
             ["gio", ["open", url]],
             ["sensible-browser", [url]],
           ];
