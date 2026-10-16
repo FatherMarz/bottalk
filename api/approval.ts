@@ -14,6 +14,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch {
     return res.status(400).json({ error: "Invalid request." });
   }
+  if (!body || typeof body !== "object" || Array.isArray(body))
+    return res.status(400).json({ error: "Invalid request." });
   const id = typeof body.id === "string" && ID.test(body.id) ? body.id : null;
   if (!id) return res.status(400).json({ error: "Invalid request ID." });
   if (body.action === "create") {
@@ -45,11 +47,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       VALUES (${id}, ${body.roomId}, ${body.tokenHash}, ${body.declineHash}, ${body.ct}, ${new Date(expires).toISOString()})
       ON CONFLICT (id) DO NOTHING RETURNING id`;
     if (!rows.length)
-      return res
-        .status(409)
-        .json({
-          error: "This request already exists. Its action cannot change.",
-        });
+      return res.status(409).json({
+        error: "This request already exists. Its action cannot change.",
+      });
     return res.status(200).json({ ok: true });
   }
   if (body.action === "get") {
@@ -59,14 +59,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res
         .status(404)
         .json({ error: "This request is no longer available." });
-    return res
-      .status(200)
-      .json({
-        ct: rows[0].ct,
-        status: rows[0].status,
-        expiresAt: rows[0].expires_at,
-        receipt: rows[0].receipt,
-      });
+    return res.status(200).json({
+      ct: rows[0].ct,
+      status: rows[0].status,
+      expiresAt: rows[0].expires_at,
+      receipt: rows[0].receipt,
+    });
   }
   if (body.action === "decide") {
     if (
@@ -89,11 +87,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`SELECT status, expires_at FROM approvals WHERE id = ${id} AND (CASE WHEN ${body.decision} = 'approved' THEN token_hash ELSE decline_hash END) = ${hash}`;
     if (!current.length)
       return res.status(403).json({ error: "This approval link is invalid." });
-    return res
-      .status(200)
-      .json({
-        status: current[0].status === "pending" ? "expired" : current[0].status,
-      });
+    return res.status(200).json({
+      status: current[0].status === "pending" ? "expired" : current[0].status,
+    });
   }
   return res.status(400).json({ error: "Unknown action." });
 }

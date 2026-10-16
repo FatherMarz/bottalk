@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { sql, ensureSchema, sweepWalls } from "./_lib/db.js";
+import { sql, ensureSchema, sweepWalls, appendWallNotes } from "./_lib/db.js";
 
 /** Encrypted room transport. Keys stay in participant devices and URL fragments.
  * Table and envelope names remain compatible with version 1 room invitations. */
 
 const MAX_NOTE_CHARS = 16384; // per-note ciphertext cap, same scale as calls
 const MAX_NOTES_PER_WALL = 5000; // personal tool backstop
+const MAX_BATCH = 100;
 const ID_RE = /^[a-f0-9]{24}$/; // client-generated room id
 const CLIENT_ID_RE = /^[a-f0-9-]{8,64}$/; // client-generated note id
 
@@ -15,9 +16,12 @@ function parseBody(req: VercelRequest): Record<string, unknown> {
     return body as Record<string, unknown>;
   }
   try {
-    return JSON.parse(
+    const parsed = JSON.parse(
       Buffer.isBuffer(body) ? body.toString("utf8") : String(body ?? ""),
     );
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
   } catch {
     return {};
   }
@@ -73,10 +77,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (body.action === "post") {
     if (!Array.isArray(notes) || notes.length === 0)
       return res.status(400).json({ error: "bad notes" });
+    if (notes.length > MAX_BATCH)
+      return res.status(413).json({ error: "too many notes in one request" });
+    const ids = new Set();
     for (const n of notes) {
       if (typeof n?.client_id !== "string" || !CLIENT_ID_RE.test(n.client_id)) {
         return res.status(400).json({ error: "bad note id" });
       }
+      if (ids.has(n.client_id))
+        return res.status(400).json({ error: "duplicate note id" });
+      ids.add(n.client_id);
       if (
         typeof n?.ct !== "string" ||
         n.ct.length === 0 ||
@@ -85,19 +95,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: "bad ct" });
       }
     }
-    const count =
-      await sql`SELECT count(*)::int AS n FROM wall_notes WHERE wall_id = ${id} AND NOT deleted`;
-    if (Number(count[0]?.n ?? 0) + notes.length > MAX_NOTES_PER_WALL) {
-      return res.status(413).json({ error: "full" });
-    }
-    // Upsert makes retries safe (the client keeps the note id stable).
-    for (const n of notes) {
-      await sql`
-        INSERT INTO wall_notes (wall_id, client_id, ct) VALUES (${id}, ${n.client_id}, ${n.ct})
-        ON CONFLICT (wall_id, client_id) DO UPDATE SET ct = EXCLUDED.ct, deleted = false, updated_at = now()
-      `;
-    }
-    await sql`UPDATE walls SET last_seen = now() WHERE id = ${id}`;
+    const result = await appendWallNotes(id, notes, MAX_NOTES_PER_WALL);
+    if (result === "gone") return res.status(404).json({ error: "gone" });
+    if (result === "full") return res.status(413).json({ error: "full" });
     return res.status(200).json({ ok: true });
   }
 

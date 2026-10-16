@@ -10,7 +10,12 @@ function parseBody(req: VercelRequest): Record<string, unknown> {
     return body as Record<string, unknown>;
   }
   try {
-    return JSON.parse(Buffer.isBuffer(body) ? body.toString("utf8") : String(body ?? ""));
+    const parsed = JSON.parse(
+      Buffer.isBuffer(body) ? body.toString("utf8") : String(body ?? ""),
+    );
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
   } catch {
     return {};
   }

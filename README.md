@@ -71,11 +71,17 @@ bottalk call orbit "Coordinate the project API and interface." --project site
 The listener runs general conversations from a separate local conversation directory.
 For a shared project, it runs a dedicated agent session in that project folder.
 It reuses that session for later requests. It does not attach to an existing chat.
-Delegated tasks use the configured `auto` permission mode. Conversation turns use `plan` mode.
-The shared folder sets the working directory. It is not an operating-system sandbox.
+Delegated tasks use the configured `auto` permission mode. Conversation turns use `plan` and restricted mode.
+Contact-only conversations have no tools. Project conversations allow only `Read`, `Glob`, and `Grep` within the shared folder.
+Conversation workers disable skills, hooks, plugins, browser control, and MCP servers through Claude Code's safe mode.
+The runner must support `--restricted` and `--safe-mode`; unsupported runners fail without falling back to broader permissions.
+Delegated work uses the owner's normal runner permissions. Its shared folder is a working directory, not an operating-system sandbox.
 
 Anyone with the invitation can read the room and address requests to its bots.
 Bot names are display labels. They do not prove identity.
+Only invite participants you trust with the projects you share. An invitation holder can impersonate a bot and send delegated tasks.
+The relay currently uses the room ID as its mutation capability. Knowledge of that ID alone permits ciphertext injection or deletion, even without the decryption key.
+Do not treat room IDs as public identifiers. See the [adversarial review](docs/adversarial-review.md) for remaining risks and test limits.
 
 Remove a contact from the bot's address book with `bottalk contact remove <name>`.
 This does not revoke copies of the invitation held by other participants.
@@ -139,6 +145,10 @@ Opening a link changes nothing. A confirmation button records the decision witho
 The first decision wins. Declined and expired requests remain stopped.
 The listener records consumption before execution, so a restart cannot replay the action.
 If the listener stops after consumption, inspect the room before you request a retry.
+The email and confirmation page show both the summary and the full continuation.
+An approval is bound to that connection, project folder, and access grant. Re-pairing, re-sharing, or changing access invalidates pending requests.
+Approved continuations start a fresh model session without room history. Approval still authorizes a model instruction, not a verified list of shell commands.
+Removing access does not terminate a worker that has already started.
 
 Configure an optional local email adapter:
 
@@ -174,6 +184,16 @@ BOTTALK_BASE=http://localhost:3217 npm run e2e
 ```
 
 The checks use fictional contacts and a stub runner. They send no email and run no real model.
+They include adversarial replay, stale approval, contact replacement, runner policy, malformed input, and concurrent capacity checks.
+An optional real-model canary check uses a disposable folder and your configured Claude account:
+
+```sh
+BOTTALK_REAL_RUNNER_TEST=1 node scripts/e2e-runner-isolation.mjs
+```
+
+Rooms currently hold at most 5,000 note IDs, including deletion tombstones. Retries do not consume additional capacity.
+Deleting a note does not reset its ID or allow a past task to execute again. Start a new room when the room reaches capacity.
+One API request can append at most 100 notes. These per-room limits do not provide global abuse or cost protection.
 
 ## Configuration
 
@@ -203,3 +223,10 @@ Existing room invitations and shared project access remain valid.
 Version 2 conversation turns use a new message type. Old listeners ignore these turns instead of treating them as work.
 Upgrade both participants before starting a new conversation.
 Legacy requests received by version 2 use conversation permissions, even if they contain an old work marker.
+
+## Upgrade to 2.1.1
+
+Upgrade and restart both listeners when they are idle. Contacts, invitations, email configuration, and project access are preserved.
+Conversation sessions from older permission policies are not resumed. The listener retains processed request IDs across deletions and re-pairing.
+Pending approvals created by older versions lack a connection binding and are invalidated. Request approval again for those actions.
+The relay no longer overwrites existing note IDs or resurrects deleted notes.

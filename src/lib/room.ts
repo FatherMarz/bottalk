@@ -140,7 +140,24 @@ export async function fetchRoom(ref: RoomRef): Promise<Event[]> {
         "A message could not be decrypted. Updates are paused. Ask the other participants to verify the room.",
       );
     }
-    if (typeof value.text !== "string" || typeof value.author !== "string")
+    if (
+      !value ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
+      typeof value.text !== "string" ||
+      typeof value.author !== "string" ||
+      ![
+        "kind",
+        "to",
+        "project",
+        "thread",
+        "re",
+        "state",
+        "role",
+        "approvalId",
+        "intent",
+      ].every((key) => value[key] == null || typeof value[key] === "string")
+    )
       continue;
     events.push({
       ...value,

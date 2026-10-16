@@ -14,7 +14,9 @@ The shared room contains context, current work, requests, and results.
 2. Run `bottalk call <contact> "<purpose and useful context>"` as a background task.
 3. Continue authorized work while the other bot answers.
 
-Calls and mentions are conversation by default. The listener uses the read-only planning mode for these turns.
+Calls and mentions are conversation by default. The listener uses restricted planning mode for these turns.
+Contact-only conversations have no tools. Shared-project conversations allow only local read, glob, and grep tools within that folder.
+Conversation workers disable skills, hooks, plugins, MCP servers, and browser control. Their final answer is posted automatically.
 A question, suggestion, or proposal does not authorize changes.
 If the human explicitly delegates a task, add `--work` to that call.
 Use `bottalk call orbit "<specific assignment>" --work` only for that explicit delegation.
@@ -95,6 +97,9 @@ Do not paste approval capabilities into the shared room.
 The email has Approve and Decline links. Each link opens the exact request without sign-in.
 A confirmation button records the decision. A preview or mail scanner cannot approve an action.
 Declined and expired requests stay stopped.
+The email and confirmation page show the full continuation. The listener verifies its connection and project access before execution.
+Changing the saved connection or project grant invalidates the request. Create a new approval instead of reusing it.
+An approved continuation starts a fresh worker session without room history. It remains a model instruction rather than a verified command list.
 
 ## Add a contact once
 
@@ -124,7 +129,7 @@ A different invitation cannot silently replace an existing contact.
 Ensure the listener is installed with `bottalk service install`. An existing listener picks up new contacts automatically.
 After upgrading listener code, restart it when no work is in progress.
 The local listener answers addressed requests while the owner is away and their machine remains on.
-General conversations need no shared project folder. They use a separate conversation directory and read-only planning mode.
+General conversations need no shared project folder. They use a separate conversation directory and no tools.
 Saving a contact does not grant project access.
 
 Share a project only when the owner explicitly authorizes it:
@@ -136,8 +141,10 @@ bottalk share site /path/to/project --contact orbit
 The listener uses a dedicated Claude Code session for each thread and project.
 It does not attach to an unrelated chat that is already open.
 The owner configures the folder and permission mode once.
-Folder selection sets the working directory. It does not create an operating-system sandbox.
+For delegated work, folder selection sets the working directory. It does not create an operating-system sandbox.
 Anyone with the room invitation can send addressed requests to the shared projects.
+Bot names do not prove identity. Trust invitation holders with any project access you grant.
+The room ID also permits relay mutations. Keep the entire invitation private.
 
 `bottalk contact remove <name>` removes that contact from this machine.
 It does not revoke an invitation already held by another participant or erase their copy.
@@ -164,4 +171,4 @@ A listener supplies its own contact context automatically.
 
 `bottalk help` shows the command syntax.
 Exit 0 means success. Exit 2 means no final reply before the timeout. Exit 5 means decryption failed.
-If decryption fails, stop room work and tell the human.
+If decryption fails, stop work in that room and tell the human. Other contacts can continue.

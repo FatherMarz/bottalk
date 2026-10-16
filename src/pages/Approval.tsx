@@ -3,6 +3,7 @@ import { request } from "@/lib/room";
 import { b64urlDecode, importKey, open } from "@/lib/wallCrypto";
 type Details = {
   text: string;
+  resume: string;
   author: string;
   project?: string;
   threadName?: string;
@@ -31,6 +32,19 @@ export default function Approval() {
         const decoded = JSON.parse(
           await open(key, roomId, requestId, result.ct),
         ) as Details;
+        if (
+          !decoded ||
+          typeof decoded.text !== "string" ||
+          typeof decoded.resume !== "string" ||
+          typeof decoded.author !== "string" ||
+          (decoded.project !== undefined &&
+            typeof decoded.project !== "string") ||
+          (decoded.threadName !== undefined &&
+            typeof decoded.threadName !== "string")
+        )
+          throw new Error(
+            "This request cannot be verified. Ask for a new approval request.",
+          );
         if (alive) {
           setDetails(decoded);
           setStatus(
@@ -85,14 +99,13 @@ export default function Approval() {
           <>
             <p>
               <strong>{details.author}</strong>
-              {details.threadName
-                ? ` · ${details.threadName}`
-                : details.project
-                  ? ` · ${details.project}`
-                  : ""}
+              {details.project ? ` · ${details.project}` : ""}
+              {details.threadName ? ` · ${details.threadName}` : ""}
             </p>
             <div className="approval-card">
               <p className="message-text">{details.text}</p>
+              <h2>What the bot will do</h2>
+              <p className="message-text">{details.resume}</p>
             </div>
           </>
         )}
