@@ -2119,11 +2119,12 @@ function runMailTurn(email, ownerEmail) {
     );
     let out = "";
     child.stdout.on("data", (d) => (out += d));
-    child.stderr.on("data", () => {});
+    let err = "";
+    child.stderr.on("data", (d) => (err += d));
     const timer = setTimeout(() => child.kill("SIGTERM"), MAIL_TURN_TIMEOUT_MS);
-    child.on("error", () => {
+    child.on("error", (e) => {
       clearTimeout(timer);
-      resolve({ sent: false });
+      resolve({ sent: false, reason: e.message });
     });
     child.on("close", () => {
       clearTimeout(timer);
@@ -2134,7 +2135,10 @@ function runMailTurn(email, ownerEmail) {
       const m = reply.match(/^SENT(?:\s+(\S+@\S+))?$/);
       // A different address than the one we asked for counts as not sent.
       if (!m || (to && m[1] && m[1].toLowerCase() !== to.toLowerCase()))
-        return resolve({ sent: false });
+        return resolve({
+          sent: false,
+          reason: (reply || err.trim() || "no reply").slice(-300),
+        });
       resolve({ sent: true, to: to || m[1] || "" });
     });
   });
@@ -2268,7 +2272,8 @@ async function createApproval({
   } else if (local && !mailer && process.env.BOTTALK_MAIL_TURN !== "0") {
     const sent = await runMailTurn(email, to);
     delivered = sent.sent;
-    if (!delivered) mailError = "Your bot has no email tool it can use.";
+    if (!delivered)
+      mailError = `Your bot did not send the email (${sent.reason}).`;
   }
   if (delivered)
     // The email now holds the only copy of the links. Receipts still verify the decision.
