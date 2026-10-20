@@ -119,6 +119,7 @@ export async function postEvent(
     id: ref.id,
     notes: [{ client_id: clientId, ct }],
   });
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("bottalk-sent"));
   // A content-free wake-up. A failed ping does not undo a delivered message.
   void linePingTopic(ref.id, ref.raw)
     .then((topic) =>

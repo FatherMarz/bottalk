@@ -24,7 +24,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { spawn, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-const VERSION = "2.2.2";
+const VERSION = "2.2.3";
 const CHANGED_APPROVAL =
   "The contact, folder, or permission mode changed after this approval was asked. Ask for a new approval.";
 const APPROVAL_FENCE = "bottalk-approval";
@@ -136,6 +136,23 @@ async function cmdUpgrade() {
 
 const WALL_PROTO = "wall-v1";
 const WALL_POLL_MS = 2000;
+const WALL_POLL_MAX_MS = 15000;
+
+/** Idle back-off for wall polling: fast right after activity, slower while
+ *  nothing new arrives, back to fast on `reset()`. */
+function pollBackoff(startMs = WALL_POLL_MS) {
+  let ms = startMs;
+  return {
+    next() {
+      const cur = ms;
+      ms = Math.min(Math.round(ms * 1.5), WALL_POLL_MAX_MS);
+      return cur;
+    },
+    reset() {
+      ms = startMs;
+    },
+  };
+}
 
 function loadWall() {
   if (!existsSync(WALL_PATH)) return null;
@@ -231,12 +248,13 @@ function printNotes(notes) {
 
 async function chatWait(w, timeoutSecs) {
   const deadline = Date.now() + timeoutSecs * 1000;
+  const backoff = pollBackoff();
   while (Date.now() < deadline) {
     let fetched;
     try {
       fetched = await wallFetch(w);
     } catch {
-      await sleep(WALL_POLL_MS); // network blip - keep polling
+      await sleep(backoff.next()); // network blip - keep polling
       continue;
     }
     const seen = new Set(w.seen ?? []);
@@ -255,7 +273,7 @@ async function chatWait(w, timeoutSecs) {
       );
       return;
     }
-    await sleep(WALL_POLL_MS);
+    await sleep(backoff.next());
   }
   console.log("(nothing new yet)");
   process.exit(2);
@@ -494,23 +512,25 @@ function openIncomingRoom(l, state, thread) {
 async function lineWaitFor(l, askId, timeoutSecs) {
   const printed = new Set();
   const deadline = Date.now() + timeoutSecs * 1000;
+  const backoff = pollBackoff(WALL_POLL_MS * 2);
   while (Date.now() < deadline) {
     let notes = [];
     try {
       notes = (await wallFetch(lineWall(l))).notes;
     } catch {
-      await sleep(WALL_POLL_MS * 2);
+      await sleep(backoff.next());
       continue;
     }
     for (const n of notes) {
       if (n.re !== askId || printed.has(n.clientId)) continue;
       printed.add(n.clientId);
+      backoff.reset();
       console.log(
         `[${n.author ?? "?"}${n.kind === "action" ? "" : ` ${n.kind}`}] ${n.text}`,
       );
       if (["answer", "done", "refused"].includes(n.kind)) return;
     }
-    await sleep(WALL_POLL_MS * 2);
+    await sleep(backoff.next());
   }
   console.log(
     `No final answer yet. The conversation continues in the room. Request ${askId}.`,
@@ -1129,12 +1149,14 @@ async function lineCheck(name, st) {
 /** Stream ntfy pings for every line's topic; resolve on the first one. */
 function waitForPing(topics, maxMs) {
   return new Promise((resolve) => {
-    if (PUSH_OFF || topics.length === 0) return setTimeout(resolve, maxMs);
+    if (PUSH_OFF || topics.length === 0)
+      return setTimeout(() => resolve(false), maxMs);
     const ac = new AbortController();
+    let pinged = false;
     const done = () => {
       clearTimeout(timer);
       ac.abort();
-      resolve();
+      resolve(pinged);
     };
     const timer = setTimeout(done, maxMs);
     (async () => {
@@ -1150,7 +1172,10 @@ function waitForPing(topics, maxMs) {
             const line = buf.slice(0, i);
             buf = buf.slice(i + 1);
             try {
-              if (JSON.parse(line).event === "message") return done();
+              if (JSON.parse(line).event === "message") {
+                pinged = true;
+                return done();
+              }
             } catch {}
           }
         }
@@ -1171,6 +1196,7 @@ async function lineListen() {
   );
   const st = readJson(LINE_STATE_PATH, { v: 1, lines: {} });
   const warnedAliases = new Set();
+  let idleMs = 0;
   for (;;) {
     const c = loadLines();
     const names = Object.keys(c.lines);
@@ -1199,10 +1225,15 @@ async function lineListen() {
     } catch (error) {
       console.error(`Approval check failed: ${error.message}`);
     }
-    await waitForPing(
+    // Push wakes the loop at once, so a quiet listener can check less often.
+    const baseMs = Math.min(LINE_POLL_SECS * 1000, 15000);
+    const ceilMs = !PUSH_OFF && baseMs >= 15000 ? 60000 : baseMs;
+    idleMs = Math.min(Math.max(baseMs, Math.round(idleMs * 1.5)), ceilMs);
+    const pinged = await waitForPing(
       names.map((n) => pingTopic(c.lines[n])),
-      Math.min(LINE_POLL_SECS * 1000, 15000),
+      idleMs,
     );
+    if (pinged) idleMs = 0;
   }
 }
 

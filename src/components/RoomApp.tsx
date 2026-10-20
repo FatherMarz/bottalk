@@ -302,10 +302,20 @@ export default function RoomApp({
     if (!ref) return;
     let alive = true;
     let timer: ReturnType<typeof setTimeout>;
+    let delay = 2500;
+    let lastCount = -1;
+    const kick = () => {
+      delay = 2500;
+      clearTimeout(timer);
+      if (alive) timer = setTimeout(tick, 0);
+    };
     const tick = async () => {
       try {
         const next = await fetchRoom(ref);
         if (!alive) return;
+        if (next.length !== lastCount) delay = 2500;
+        else delay = Math.min(Math.round(delay * 1.5), 15000);
+        lastCount = next.length;
         setEvents(next);
         setConnection("Connected");
         setError("");
@@ -333,11 +343,14 @@ export default function RoomApp({
           setConnection("Reconnecting");
         }
       }
-      if (alive) timer = setTimeout(tick, document.hidden ? 12000 : 2500);
+      if (alive)
+        timer = setTimeout(tick, document.hidden ? Math.max(delay, 12000) : delay);
     };
     void tick();
+    window.addEventListener("bottalk-sent", kick);
     return () => {
       alive = false;
+      window.removeEventListener("bottalk-sent", kick);
       clearTimeout(timer);
     };
   }, [ref, ownBot]);
